@@ -52,20 +52,12 @@ export default function Home() {
           >
             Read our docs
           </a>
-          <button 
+          <a
             className="rounded-full border border-solid border-green-500 bg-green-500 text-white transition-colors flex items-center justify-center hover:bg-green-600 font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto"
-            onClick={() => alert(`🏠 Homepage: app/page.tsx
-🎨 Styling: app/globals.css  
-📱 Layout: app/layout.tsx
-🧩 Components: components/ folder
-📄 New pages: app/your-page/page.tsx
-
-Quick start:
-cd web
-npm run dev -- --port 4000`)}
+            href="/dev-guide"
           >
             📝 Dev Guide
-          </button>
+          </a>
         </div>
       </main>
       <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
