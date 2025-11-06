@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Spot } from "@/types/spot";
 import { getAllSpots, deleteSpot } from "@/utils/spotStorage";
+import SpotsMap from "@/components/SpotsMap";
 
 export default function SpotsPage() {
   const [spots, setSpots] = useState<Spot[]>([]);
@@ -34,6 +35,13 @@ export default function SpotsPage() {
             + New Spot
           </Link>
         </div>
+
+        {spots.length > 0 && spots.some(s => s.latitude !== undefined && s.longitude !== undefined) && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-3">Map View</h2>
+            <SpotsMap spots={spots} />
+          </div>
+        )}
 
         {spots.length === 0 ? (
           <div className="text-center py-12 border border-gray-200 dark:border-gray-700 rounded-lg">

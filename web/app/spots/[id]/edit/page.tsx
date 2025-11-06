@@ -126,14 +126,16 @@ export default function EditSpotPage() {
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
               Click on the map to select a location, or drag the marker to adjust it.
             </p>
-            <Map
-              initialLat={latitude}
-              initialLng={longitude}
-              onLocationSelect={(lat, lng) => {
-                setLatitude(lat);
-                setLongitude(lng);
-              }}
-            />
+            {!isLoading && (
+              <Map
+                initialLat={latitude}
+                initialLng={longitude}
+                onLocationSelect={(lat, lng) => {
+                  setLatitude(lat);
+                  setLongitude(lng);
+                }}
+              />
+            )}
             {latitude && longitude && (
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
                 Selected: {latitude.toFixed(6)}, {longitude.toFixed(6)}

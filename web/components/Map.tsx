@@ -16,10 +16,16 @@ interface MapProps {
 
 export default function Map({
   onLocationSelect,
-  initialLat = 41.2565, // Default location latitude - change this to your city
-  initialLng = -95.9345, // Default location longitude - change this to your city
+  initialLat,
+  initialLng,
   initialZoom = 12, // Zoom level (higher = more zoomed in, try 10-15)
 }: MapProps) {
+  // Use defaults only if coordinates not provided
+  const defaultLat = 41.2565; // Default location latitude - change this to your city
+  const defaultLng = -95.9345; // Default location longitude - change this to your city
+  
+  const lat = initialLat !== undefined ? initialLat : defaultLat;
+  const lng = initialLng !== undefined ? initialLng : defaultLng;
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -60,91 +66,125 @@ export default function Map({
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
-    // Initialize map with OpenStreetMap style
-    map.current = new maplibregl.Map({
-      container: mapContainer.current,
-      style: {
-        version: 8,
-        sources: {
-          "osm-tiles": {
-            type: "raster",
-            tiles: [
-              "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-            ],
-            tileSize: 256,
-            attribution: "© OpenStreetMap contributors"
-          }
-        },
-        layers: [
-          {
-            id: "osm-tiles-layer",
-            type: "raster",
-            source: "osm-tiles",
-            minzoom: 0,
-            maxzoom: 19
-          }
-        ]
-      },
-      center: [initialLng, initialLat],
-      zoom: initialZoom,
-    });
+    // Wait for container to have dimensions before initializing
+    const initMap = () => {
+      if (!mapContainer.current || map.current) return;
 
-    map.current.on("load", () => {
-      setIsLoaded(true);
-      
-      // Resize map to ensure proper rendering
-      map.current!.resize();
-      
-      // Add initial marker if coordinates provided
-      if (initialLat && initialLng) {
-        updateMarker(initialLat, initialLng);
+      // Check if container has dimensions
+      const rect = mapContainer.current.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        // Retry after a short delay
+        setTimeout(initMap, 100);
+        return;
       }
 
-      // Track whether user is dragging the map (to distinguish from clicks)
-      let clickTimeout: NodeJS.Timeout | null = null;
-      let wasDragged = false;
+      // Calculate center - use provided coordinates or defaults
+      const centerLat = initialLat !== undefined ? initialLat : defaultLat;
+      const centerLng = initialLng !== undefined ? initialLng : defaultLng;
 
-      map.current!.on("dragstart", () => {
-        wasDragged = true;
-        if (clickTimeout) {
-          clearTimeout(clickTimeout);
-          clickTimeout = null;
-        }
-      });
-
-      map.current!.on("dragend", () => {
-        // Reset after drag ends
-        setTimeout(() => {
-          wasDragged = false;
-        }, 50);
-      });
-
-      // Handle map clicks (only if not dragging)
-      map.current!.on("click", (e) => {
-        // Check if this was a drag by checking if originalEvent exists and has movement
-        const originalEvent = e.originalEvent as MouseEvent;
-        if (originalEvent && (originalEvent.movementX !== 0 || originalEvent.movementY !== 0)) {
-          wasDragged = true;
-        }
-
-        // Delay marker placement to check if it was a drag
-        clickTimeout = setTimeout(() => {
-          if (!wasDragged) {
-            const { lng, lat } = e.lngLat;
-            updateMarker(lat, lng);
-            if (onLocationSelectRef.current) {
-              onLocationSelectRef.current(lat, lng);
+      // Initialize map with OpenStreetMap style (only once)
+      map.current = new maplibregl.Map({
+        container: mapContainer.current,
+        style: {
+          version: 8,
+          sources: {
+            "osm-tiles": {
+              type: "raster",
+              tiles: [
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+              ],
+              tileSize: 256,
+              attribution: "© OpenStreetMap contributors"
             }
-          }
-          wasDragged = false;
-        }, 150);
+          },
+          layers: [
+            {
+              id: "osm-tiles-layer",
+              type: "raster",
+              source: "osm-tiles",
+              minzoom: 0,
+              maxzoom: 19
+            }
+          ]
+        },
+        center: [centerLng, centerLat],
+        zoom: initialZoom,
       });
-    });
 
-    // Handle style loading errors
-    map.current.on("error", (e) => {
-      console.error("Map error:", e);
-    });
+      // Handle style loading errors
+      map.current.on("error", (e) => {
+        console.error("Map error:", e);
+      });
+
+      map.current.on("load", () => {
+        setIsLoaded(true);
+        
+        // Multiple resize calls to ensure proper rendering
+        setTimeout(() => {
+          if (map.current) {
+            map.current.resize();
+          }
+        }, 0);
+        setTimeout(() => {
+          if (map.current) {
+            map.current.resize();
+          }
+        }, 100);
+        setTimeout(() => {
+          if (map.current) {
+            map.current.resize();
+          }
+        }, 300);
+        
+        // Add initial marker if coordinates provided
+        if (initialLat !== undefined && initialLng !== undefined) {
+          updateMarker(initialLat, initialLng);
+        }
+
+        // Track whether user is dragging the map (to distinguish from clicks)
+        let clickTimeout: NodeJS.Timeout | null = null;
+        let wasDragged = false;
+
+        map.current!.on("dragstart", () => {
+          wasDragged = true;
+          if (clickTimeout) {
+            clearTimeout(clickTimeout);
+            clickTimeout = null;
+          }
+        });
+
+        map.current!.on("dragend", () => {
+          // Reset after drag ends
+          setTimeout(() => {
+            wasDragged = false;
+          }, 50);
+        });
+
+        // Handle map clicks (only if not dragging)
+        map.current!.on("click", (e) => {
+          // Check if this was a drag by checking if originalEvent exists and has movement
+          const originalEvent = e.originalEvent as MouseEvent;
+          if (originalEvent && (originalEvent.movementX !== 0 || originalEvent.movementY !== 0)) {
+            wasDragged = true;
+          }
+
+          // Delay marker placement to check if it was a drag
+          clickTimeout = setTimeout(() => {
+            if (!wasDragged) {
+              const { lng, lat } = e.lngLat;
+              updateMarker(lat, lng);
+              if (onLocationSelectRef.current) {
+                onLocationSelectRef.current(lat, lng);
+              }
+            }
+            wasDragged = false;
+          }, 150);
+        });
+      });
+    };
+
+    // Start initialization
+    setTimeout(initMap, 0);
 
     // Cleanup
     return () => {
@@ -155,7 +195,7 @@ export default function Map({
         map.current.remove();
       }
     };
-  }, [initialLat, initialLng, initialZoom, updateMarker]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Resize map when component is mounted and after window resize
   useLayoutEffect(() => {
@@ -177,18 +217,35 @@ export default function Map({
 
   // Update marker position when initial coordinates change (but not on every render)
   useEffect(() => {
-    if (map.current && isLoaded && initialLat && initialLng && marker.current) {
-      // Only update if coordinates actually changed
-      const currentLngLat = marker.current.getLngLat();
-      if (
-        Math.abs(currentLngLat.lat - initialLat) > 0.0001 ||
-        Math.abs(currentLngLat.lng - initialLng) > 0.0001
-      ) {
-        marker.current.setLngLat([initialLng, initialLat]);
+    if (!map.current || !isLoaded) return;
+    
+    // If coordinates are provided and marker doesn't exist, create it
+    if (initialLat !== undefined && initialLng !== undefined) {
+      // Pan map to the location if it's far from current center
+      const currentCenter = map.current.getCenter();
+      const distance = Math.sqrt(
+        Math.pow(currentCenter.lat - initialLat, 2) + 
+        Math.pow(currentCenter.lng - initialLng, 2)
+      );
+      if (distance > 0.01) {
+        map.current.flyTo({
+          center: [initialLng, initialLat],
+          zoom: 14,
+        });
       }
-    } else if (map.current && isLoaded && initialLat && initialLng && !marker.current) {
-      // Create marker if it doesn't exist
-      updateMarker(initialLat, initialLng);
+      
+      if (!marker.current) {
+        updateMarker(initialLat, initialLng);
+      } else {
+        // Update existing marker if coordinates changed
+        const currentLngLat = marker.current.getLngLat();
+        if (
+          Math.abs(currentLngLat.lat - initialLat) > 0.0001 ||
+          Math.abs(currentLngLat.lng - initialLng) > 0.0001
+        ) {
+          marker.current.setLngLat([initialLng, initialLat]);
+        }
+      }
     }
   }, [initialLat, initialLng, isLoaded]);
 
