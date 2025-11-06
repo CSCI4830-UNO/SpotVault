@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { Spot } from "@/types/spot";
 import { saveSpot, getSpotById } from "@/utils/spotStorage";
+import Map from "@/components/Map";
 
 export default function EditSpotPage() {
   const router = useRouter();
@@ -13,6 +14,8 @@ export default function EditSpotPage() {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [latitude, setLatitude] = useState<number | undefined>(undefined);
+  const [longitude, setLongitude] = useState<number | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -21,6 +24,8 @@ export default function EditSpotPage() {
     if (spot) {
       setName(spot.name);
       setDescription(spot.description || "");
+      setLatitude(spot.latitude);
+      setLongitude(spot.longitude);
       setIsLoading(false);
     } else {
       // Spot not found, redirect to spots list
@@ -49,6 +54,8 @@ export default function EditSpotPage() {
       ...spot,
       name: name.trim(),
       description: description.trim() || undefined,
+      latitude,
+      longitude,
       updatedAt: new Date().toISOString(),
     };
 
@@ -109,11 +116,26 @@ export default function EditSpotPage() {
             />
           </div>
 
-          <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              <strong>Note:</strong> Location selection and photo upload will be
-              added in a future update.
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Location <span className="text-gray-500 text-xs">(optional)</span>
+            </label>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              Click on the map to select a location, or drag the marker to adjust it.
             </p>
+            <Map
+              initialLat={latitude}
+              initialLng={longitude}
+              onLocationSelect={(lat, lng) => {
+                setLatitude(lat);
+                setLongitude(lng);
+              }}
+            />
+            {latitude && longitude && (
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                Selected: {latitude.toFixed(6)}, {longitude.toFixed(6)}
+              </p>
+            )}
           </div>
 
           <div className="flex gap-4">
