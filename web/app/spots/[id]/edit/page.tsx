@@ -1,5 +1,8 @@
 "use client";
 
+// Edit Spot Page - Form to edit an existing spot
+// To edit: Same as create page - add/remove fields, change validation, etc.
+
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";

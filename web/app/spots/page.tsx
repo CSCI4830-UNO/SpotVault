@@ -1,5 +1,8 @@
 "use client";
 
+// Spots List Page - Shows all saved spots
+// To edit: Change how spots are displayed, add/remove info shown, change delete/edit buttons
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Spot } from "@/types/spot";
@@ -53,12 +56,15 @@ export default function SpotsPage() {
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
+                    {/* Spot name - change text size/color here */}
                     <h2 className="text-2xl font-semibold mb-2">{spot.name}</h2>
+                    {/* Description - only shows if spot has one */}
                     {spot.description && (
                       <p className="text-gray-600 dark:text-gray-400 mb-3">
                         {spot.description}
                       </p>
                     )}
+                    {/* Location coordinates - only shows if spot has location */}
                     {(spot.latitude !== undefined ||
                       spot.longitude !== undefined) && (
                       <p className="text-sm text-gray-500 dark:text-gray-500">
@@ -66,6 +72,7 @@ export default function SpotsPage() {
                         {spot.longitude?.toFixed(6)}
                       </p>
                     )}
+                    {/* Created date - change format here if you want */}
                     <p className="text-xs text-gray-400 dark:text-gray-600 mt-2">
                       Created: {new Date(spot.createdAt).toLocaleDateString()}
                     </p>

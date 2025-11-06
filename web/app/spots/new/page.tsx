@@ -1,5 +1,8 @@
 "use client";
 
+// Create New Spot Page - Form to create a new spot
+// To edit: Add/remove form fields, change validation, modify submit button
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -47,6 +50,7 @@ export default function NewSpotPage() {
         <h1 className="text-4xl font-bold mb-8">Create New Spot</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Spot Name field - required field */}
           <div>
             <label
               htmlFor="name"
@@ -54,6 +58,7 @@ export default function NewSpotPage() {
             >
               Spot Name <span className="text-red-500">*</span>
             </label>
+            {/* Change placeholder text or make it optional by removing "required" */}
             <input
               type="text"
               id="name"
@@ -82,6 +87,7 @@ export default function NewSpotPage() {
             />
           </div>
 
+          {/* Map for selecting location - optional */}
           <div>
             <label className="block text-sm font-medium mb-2">
               Location <span className="text-gray-500 text-xs">(optional)</span>
@@ -89,6 +95,7 @@ export default function NewSpotPage() {
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
               Click on the map to select a location, or drag the marker to adjust it.
             </p>
+            {/* Map component - see components/Map.tsx to change map settings */}
             <Map
               onLocationSelect={(lat, lng) => {
                 setLatitude(lat);

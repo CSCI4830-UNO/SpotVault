@@ -1,6 +1,10 @@
+// Spot Storage - Handles saving and loading spots
+// Currently uses browser localStorage (data stays in browser only)
+// Note: This will be replaced with a real database later
+
 import { Spot } from "@/types/spot";
 
-const STORAGE_KEY = "spotvault_spots";
+const STORAGE_KEY = "spotvault_spots"; // Key used to store spots in browser
 
 /**
  * Get all spots from storage

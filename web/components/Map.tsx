@@ -1,5 +1,8 @@
 "use client";
 
+// Map Component - Interactive map for selecting locations
+// To edit: Change default location, zoom level, map height, or map style
+
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -13,9 +16,9 @@ interface MapProps {
 
 export default function Map({
   onLocationSelect,
-  initialLat = 41.2565, // Default to Omaha, NE
-  initialLng = -95.9345,
-  initialZoom = 12,
+  initialLat = 41.2565, // Default location latitude - change this to your city
+  initialLng = -95.9345, // Default location longitude - change this to your city
+  initialZoom = 12, // Zoom level (higher = more zoomed in, try 10-15)
 }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -189,6 +192,7 @@ export default function Map({
     }
   }, [initialLat, initialLng, isLoaded]);
 
+  // Map container - change h-[400px] to h-[500px] or whatever height you want
   return (
     <div className="w-full h-[400px] rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700 relative">
       <div ref={mapContainer} className="w-full h-full" style={{ minHeight: "400px" }} />
