@@ -70,12 +70,20 @@ export default function SpotsPage() {
                       Created: {new Date(spot.createdAt).toLocaleDateString()}
                     </p>
                   </div>
-                  <button
-                    onClick={() => handleDelete(spot.id)}
-                    className="ml-4 text-red-500 hover:text-red-700 transition-colors px-3 py-1 text-sm"
-                  >
-                    Delete
-                  </button>
+                  <div className="ml-4 flex gap-2">
+                    <Link
+                      href={`/spots/${spot.id}/edit`}
+                      className="text-blue-500 hover:text-blue-700 transition-colors px-3 py-1 text-sm"
+                    >
+                      Edit
+                    </Link>
+                    <button
+                      onClick={() => handleDelete(spot.id)}
+                      className="text-red-500 hover:text-red-700 transition-colors px-3 py-1 text-sm"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
