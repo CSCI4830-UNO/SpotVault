@@ -11,6 +11,7 @@ export interface Spot {
   description?: string; // Optional field (the ? means it's optional)
   latitude?: number; // Location coordinates
   longitude?: number;
+  tags?: string[]; // Array of tag strings (optional)
   photos?: string[]; // URLs or base64 strings for now (not implemented yet)
   createdAt: string; // When the spot was created
   updatedAt: string; // When the spot was last updated

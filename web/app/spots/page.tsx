@@ -159,10 +159,15 @@ export default function SpotsPage() {
                       Tags
                     </h4>
                     <div className="flex flex-wrap gap-2">
-                      {selectedSpot.description ? (
-                        <span className="bg-gray-700 text-white text-xs px-2 py-1 rounded">
-                          Spot
-                        </span>
+                      {selectedSpot.tags && selectedSpot.tags.length > 0 ? (
+                        selectedSpot.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="bg-teal-600 text-white text-xs px-3 py-1 rounded-full"
+                          >
+                            {tag}
+                          </span>
+                        ))
                       ) : (
                         <span className="text-gray-400 text-xs">None</span>
                       )}
