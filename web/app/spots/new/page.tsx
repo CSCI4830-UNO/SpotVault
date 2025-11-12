@@ -14,6 +14,7 @@ export default function NewSpotPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [tags, setTags] = useState("");
   const [latitude, setLatitude] = useState<number | undefined>(undefined);
   const [longitude, setLongitude] = useState<number | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,10 +29,17 @@ export default function NewSpotPage() {
 
     setIsSubmitting(true);
 
+    // Parse tags from comma-separated string
+    const parsedTags = tags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
+
     const newSpot: Spot = {
       id: generateSpotId(),
       name: name.trim(),
       description: description.trim() || undefined,
+      tags: parsedTags.length > 0 ? parsedTags : undefined,
       latitude,
       longitude,
       createdAt: new Date().toISOString(),
@@ -85,6 +93,26 @@ export default function NewSpotPage() {
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Add a short description (optional)"
             />
+          </div>
+
+          <div>
+            <label
+              htmlFor="tags"
+              className="block text-sm font-medium mb-2"
+            >
+              Tags
+            </label>
+            <input
+              type="text"
+              id="tags"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter tags separated by commas (e.g. hiking, scenic, viewpoint)"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Separate multiple tags with commas
+            </p>
           </div>
 
           {/* Map for selecting location - optional */}

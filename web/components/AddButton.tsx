@@ -1,6 +1,20 @@
-export default function AddButton() {
+export default function AddButton({
+  onClick,
+  disabled,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+}) {
   return (
-    <button className="flex-1 bg-green-700 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex-1 text-white font-bold py-2 px-4 rounded transition-colors ${
+        disabled
+          ? "bg-gray-600 cursor-not-allowed"
+          : "bg-green-700 hover:bg-green-600"
+      }`}
+    >
       ADD
     </button>
   );
