@@ -151,8 +151,8 @@ export default function SpotsMap({ spots }: SpotsMapProps) {
   }
 
   return (
-    <div className="w-full h-[400px] rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700 relative">
-      <div ref={mapContainer} className="w-full h-full" style={{ minHeight: "400px" }} />
+    <div className="w-full h-[300px] rounded-lg overflow-hidden bg-gray-900">
+      <div ref={mapContainer} className="w-full h-full" style={{ minHeight: "300px" }} />
     </div>
   );
 }
