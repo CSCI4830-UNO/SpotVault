@@ -8,12 +8,14 @@ import { Spot } from "@/types/spot";
 
 interface SpotsMapProps {
   spots: Spot[];
+  selectedSpot?: Spot | null;
 }
 
-export default function SpotsMap({ spots }: SpotsMapProps) {
+export default function SpotsMap({ spots, selectedSpot }: SpotsMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markers = useRef<maplibregl.Marker[]>([]);
+  const initialBounds = useRef<[[number, number], [number, number]] | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Initialize map once - use initial spots for center calculation
@@ -68,6 +70,33 @@ export default function SpotsMap({ spots }: SpotsMapProps) {
 
       map.current.on("load", () => {
         setIsLoaded(true);
+        
+        // Calculate and store initial bounds for all spots
+        if (initialSpotsWithLocation.length > 0) {
+          const bounds: [[number, number], [number, number]] = [
+            [initialSpotsWithLocation[0].longitude || centerLng, initialSpotsWithLocation[0].latitude || centerLat],
+            [initialSpotsWithLocation[0].longitude || centerLng, initialSpotsWithLocation[0].latitude || centerLat],
+          ];
+          
+          initialSpotsWithLocation.forEach((spot) => {
+            if (spot.longitude !== undefined && spot.latitude !== undefined) {
+              bounds[0][0] = Math.min(bounds[0][0], spot.longitude);
+              bounds[0][1] = Math.min(bounds[0][1], spot.latitude);
+              bounds[1][0] = Math.max(bounds[1][0], spot.longitude);
+              bounds[1][1] = Math.max(bounds[1][1], spot.latitude);
+            }
+          });
+          
+          initialBounds.current = bounds;
+          
+          // Fit all markers in view on initial load
+          setTimeout(() => {
+            if (map.current) {
+              map.current.fitBounds(bounds, { padding: 50, duration: 1000 });
+            }
+          }, 50);
+        }
+        
         // Multiple resize calls to ensure proper rendering
         setTimeout(() => {
           if (map.current) {
@@ -131,6 +160,23 @@ export default function SpotsMap({ spots }: SpotsMapProps) {
     }, 50);
   }, [spots, isLoaded]);
 
+  // Handle selected spot changes - zoom and center on selected spot
+  useEffect(() => {
+    if (!map.current || !isLoaded) return;
+
+    if (selectedSpot && selectedSpot.latitude !== undefined && selectedSpot.longitude !== undefined) {
+      // Zoom to selected spot with higher zoom for closer view
+      map.current.flyTo({
+        center: [selectedSpot.longitude, selectedSpot.latitude],
+        zoom: 14,
+        duration: 1000,
+      });
+    } else if (initialBounds.current) {
+      // Return to initial bounds when deselected with lower zoom
+      map.current.fitBounds(initialBounds.current, { padding: 50, duration: 1000 });
+    }
+  }, [selectedSpot, isLoaded]);
+
   // Resize map when loaded and on window resize
   useLayoutEffect(() => {
     if (!map.current || !isLoaded) return;
@@ -151,8 +197,8 @@ export default function SpotsMap({ spots }: SpotsMapProps) {
   }
 
   return (
-    <div className="w-full h-[400px] rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700 relative">
-      <div ref={mapContainer} className="w-full h-full" style={{ minHeight: "400px" }} />
+    <div className="w-full h-full rounded-lg overflow-hidden relative">
+      <div ref={mapContainer} className="w-full h-full" />
     </div>
   );
 }
