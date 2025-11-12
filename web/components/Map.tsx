@@ -249,9 +249,8 @@ export default function Map({
     }
   }, [initialLat, initialLng, isLoaded]);
 
-  // Map container - change h-[400px] to h-[500px] or whatever height you want
   return (
-    <div className="w-full h-[400px] rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700 relative">
+    <div className="w-full h-full rounded-lg relative">
       <div ref={mapContainer} className="w-full h-full" style={{ minHeight: "400px" }} />
     </div>
   );
