@@ -1,133 +1,163 @@
 "use client";
 
-import { useState } from "react"; // Removed useEffect
+import { useState, useEffect } from "react";
 import Map from "@/components/Map";
 import { Spot } from "@/types/spot";
-import Spots from "@/components/Spots";
+import Sidebar from "@/components/Sidebar";
+import SpotCreationModal from "@/components/SpotCreationModal";
+import Footer from "@/components/Footer";
+
+// --- EXAMPLE DATA ---
+const exampleSpotsData: Spot[] = [
+  {
+    id: "1",
+    name: "Omaha Spot 1",
+    latitude: 41.2565,
+    longitude: -95.9345,
+    description: "A cool spot by the park.",
+    tags: ["park", "public"],
+    createdAt: new Date().toString(),
+    updatedAt: new Date().toString(),
+  },
+  {
+    id: "2",
+    name: "Omaha Spot 2",
+    latitude: 41.258,
+    longitude: -95.94,
+    description: "Good view of downtown.",
+    tags: ["view", "downtown"],
+    createdAt: new Date().toString(),
+    updatedAt: new Date().toString(),
+  },
+];
+// --- END EXAMPLE DATA ---
 
 export default function Home() {
-  // Start with no spot selected (null), so the map is zoomed out
+  const [spots, setSpots] = useState(exampleSpotsData);
   const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
+  const [pendingSpot, setPendingSpot] = useState<{ lat: number; lng: number } | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const exampleSpots: Spot[] = [
-    {
-      id: "1",
-      name: "Omaha Spot 1",
-      latitude: 41.2565,
-      longitude: -95.9345,
-      description: "A cool spot by the park.",
-      createdAt: new Date().toString(),
-      updatedAt: new Date().toString(),
-    },
-    {
-      id: "2",
-      name: "Omaha Spot 2",
-      latitude: 41.258,
-      longitude: -95.94,
-      description: "Good view of downtown.",
-      createdAt: new Date().toString(),
-      updatedAt: new Date().toString(),
-    },
-    {
-      id: "3",
-      name: "Omaha Spot 3",
-      latitude: 41.25,
-      longitude: -95.93,
-      description: "", // Empty description to test 'None'
-      createdAt: new Date().toString(),
-      updatedAt: new Date().toString(),
-    },
-  ];
-
-  // This function handles clicking a spot in the list.
-  const handleSpotClick = (spot: Spot) => {
+  const handleSpotListClick = (spot: Spot) => {
+    setPendingSpot(null);
     if (selectedSpot?.id === spot.id) {
-      // If the clicked spot is already selected, toggle "off"
       setSelectedSpot(null);
     } else {
-      // Otherwise, select the new spot (toggle "on")
       setSelectedSpot(spot);
     }
   };
 
+  const handleMapClick = (lat: number, lng: number) => {
+    setSelectedSpot(null);
+    setPendingSpot({ lat, lng });
+  };
+
+  const handleAddClick = () => {
+    if (pendingSpot) {
+      setIsModalOpen(true);
+    }
+  };
+
+  const handleSaveSpot = (name: string, tags: string, description: string) => {
+    if (!pendingSpot) return;
+
+    const processedTags = tags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
+
+    const newSpot: Spot = {
+      id: new Date().toISOString(),
+      name: name,
+      latitude: pendingSpot.lat,
+      longitude: pendingSpot.lng,
+      tags: processedTags,
+      description: description.trim() || undefined,
+      createdAt: new Date().toString(),
+      updatedAt: new Date().toString(),
+    };
+
+    setSpots([...spots, newSpot]);
+    setIsModalOpen(false);
+    setPendingSpot(null);
+    setSelectedSpot(newSpot);
+  };
+
+  const handleDeleteSpot = () => {
+    if (!selectedSpot) return;
+    if (confirm(`Are you sure you want to delete "${selectedSpot.name}"?`)) {
+      setSpots(spots.filter(spot => spot.id !== selectedSpot.id));
+      setSelectedSpot(null);
+    }
+  };
+
+  useEffect(() => {
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setPendingSpot(null);
+        setIsModalOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, []);
+
+  // --- Zoom/Center logic ---
   const defaultLat = 41.2565;
   const defaultLng = -95.9345;
-  const zoomAllLevel = 11.5;
-  const zoomOnLevel = 14;
+  const zoomAllLevel = 13;
+  const zoomOnLevel = 16;
+
+  let currentLat = defaultLat;
+  let currentLng = defaultLng;
+  let currentZoom = zoomAllLevel;
+
+  if (selectedSpot) {
+    currentLat = selectedSpot.latitude!;
+    currentLng = selectedSpot.longitude!;
+    currentZoom = zoomOnLevel;
+  } else if (pendingSpot) {
+    currentLat = pendingSpot.lat;
+    currentLng = pendingSpot.lng;
+    currentZoom = zoomOnLevel;
+  }
 
   return (
     <div className="h-full p-2 text-white flex flex-col gap-2">
+      {isModalOpen && (
+        <SpotCreationModal
+          onCancel={() => setIsModalOpen(false)}
+          onSave={handleSaveSpot}
+        />
+      )}
+
       <div className="flex gap-2 overflow-hidden h-[70vh]">
         <main className="flex-[3] rounded-lg bg-black p-4">
           <Map
-            spots={exampleSpots}
+            spots={spots}
             selectedSpotId={selectedSpot?.id || null}
-            initialLat={selectedSpot?.latitude || defaultLat}
-            initialLng={selectedSpot?.longitude || defaultLng}
-            initialZoom={selectedSpot ? zoomOnLevel : zoomAllLevel}
+            initialLat={currentLat}
+            initialLng={currentLng}
+            initialZoom={currentZoom}
+            pendingSpot={pendingSpot}
+            onMapClick={handleMapClick}
           />
         </main>
 
-        <aside className="flex-[1] rounded-lg bg-black p-4">
-          <Spots
-            spots={exampleSpots}
-            selectedSpotId={selectedSpot?.id || null}
-            onSpotSelect={handleSpotClick}
-          />
-        </aside>
+        <Sidebar
+          spots={spots}
+          selectedSpotId={selectedSpot?.id || null}
+          onSpotSelect={handleSpotListClick}
+          isAddDisabled={!pendingSpot}
+          onAddClick={handleAddClick}
+        />
       </div>
-
-      {/* The footer logic already works perfectly for this! */}
-      <footer className="h-[20vh] flex-shrink-0 rounded-lg bg-black p-4">
-        {selectedSpot ? (
-          <div className="border rounded-lg p-4 h-full overflow-y-auto">
-            <div className="grid grid-cols-3 gap-6">
-              {/* Coordinates */}
-              <div>
-                <h4 className="text-sm font-semibold text-gray-300 mb-2">
-                  Coordinates
-                </h4>
-                <p className="text-white text-sm">
-                  {selectedSpot.latitude?.toFixed(4) || "N/A"}
-                </p>
-                <p className="text-white text-sm">
-                  {selectedSpot.longitude?.toFixed(4) || "N/A"}
-                </p>
-              </div>
-
-              {/* Notes */}
-              <div>
-                <h4 className="text-sm font-semibold text-gray-300 mb-2">
-                  Notes
-                </h4>
-                <p className="text-white text-sm max-h-16 overflow-hidden">
-                  {selectedSpot.description || "None"}
-                </p>
-              </div>
-
-              {/* Tags */}
-              <div>
-                <h4 className="text-sm font-semibold text-gray-300 mb-2">
-                  Tags
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {selectedSpot.description ? (
-                    <span className="bg-gray-700 text-white text-xs px-2 py-1 rounded">
-                      Spot
-                    </span>
-                  ) : (
-                    <span className="text-gray-400 text-xs">None</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="text-gray-500 flex items-center justify-center h-full">
-            Select a spot to see details
-          </div>
-        )}
-      </footer>
+      
+      <Footer
+        selectedSpot={selectedSpot}
+        pendingSpot={pendingSpot}
+        onDeleteSpot={handleDeleteSpot}
+      />
     </div>
   );
 }
