@@ -1,159 +1,56 @@
 "use client";
 
-// Map showing all spots - Simple map component for displaying spots
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import maplibregl from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
 import { Spot } from "@/types/spot";
+import AddButton from "./AddButton";
+import ModifyButton from "./ModifyButton";
+// We don't need maplibre-gl here anymore
 
 interface SpotsMapProps {
   spots: Spot[];
+  selectedSpotId: string | null;
+  onSpotSelect: (spot: Spot) => void;
 }
 
-export default function SpotsMap({ spots }: SpotsMapProps) {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<maplibregl.Map | null>(null);
-  const markers = useRef<maplibregl.Marker[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  // Initialize map once - use initial spots for center calculation
-  useEffect(() => {
-    if (!mapContainer.current || map.current) return;
-
-    // Wait a bit to ensure container has dimensions
-    const initMap = () => {
-      if (!mapContainer.current || map.current) return;
-      
-      // Check if container has dimensions
-      const rect = mapContainer.current.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) {
-        // Retry after a short delay
-        setTimeout(initMap, 100);
-        return;
-      }
-
-      // Calculate center from initial spots, or use default
-      const initialSpotsWithLocation = spots.filter(s => s.latitude !== undefined && s.longitude !== undefined);
-      let centerLat = 41.2565;
-      let centerLng = -95.9345;
-      
-      if (initialSpotsWithLocation.length > 0) {
-        centerLat = initialSpotsWithLocation.reduce((sum, s) => sum + (s.latitude || 0), 0) / initialSpotsWithLocation.length;
-        centerLng = initialSpotsWithLocation.reduce((sum, s) => sum + (s.longitude || 0), 0) / initialSpotsWithLocation.length;
-      }
-
-      map.current = new maplibregl.Map({
-        container: mapContainer.current,
-        style: {
-          version: 8,
-          sources: {
-            "osm-tiles": {
-              type: "raster",
-              tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-              tileSize: 256,
-              attribution: "© OpenStreetMap contributors"
-            }
-          },
-          layers: [{
-            id: "osm-tiles-layer",
-            type: "raster",
-            source: "osm-tiles",
-            minzoom: 0,
-            maxzoom: 19
-          }]
-        },
-        center: [centerLng, centerLat],
-        zoom: initialSpotsWithLocation.length > 0 ? 10 : 12,
-      });
-
-      map.current.on("load", () => {
-        setIsLoaded(true);
-        // Multiple resize calls to ensure proper rendering
-        setTimeout(() => {
-          if (map.current) {
-            map.current.resize();
-          }
-        }, 0);
-        setTimeout(() => {
-          if (map.current) {
-            map.current.resize();
-          }
-        }, 100);
-        setTimeout(() => {
-          if (map.current) {
-            map.current.resize();
-          }
-        }, 300);
-      });
-
-      map.current.on("error", (e) => {
-        console.error("Map error:", e);
-      });
-    };
-
-    // Start initialization
-    setTimeout(initMap, 0);
-
-    // Cleanup function
-    return () => {
-      markers.current.forEach(marker => marker.remove());
-      markers.current = [];
-      if (map.current) {
-        map.current.remove();
-      }
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Update markers when spots change
-  useEffect(() => {
-    if (!map.current || !isLoaded) return;
-
-    // Remove old markers
-    markers.current.forEach(marker => marker.remove());
-    markers.current = [];
-
-    // Add new markers
-    const spotsWithLocation = spots.filter(s => s.latitude !== undefined && s.longitude !== undefined);
-    spotsWithLocation.forEach((spot) => {
-      if (spot.latitude !== undefined && spot.longitude !== undefined) {
-        const marker = new maplibregl.Marker()
-          .setLngLat([spot.longitude, spot.latitude])
-          .addTo(map.current!);
-        markers.current.push(marker);
-      }
-    });
-
-    // Resize after markers are added
-    setTimeout(() => {
-      if (map.current) {
-        map.current.resize();
-      }
-    }, 50);
-  }, [spots, isLoaded]);
-
-  // Resize map when loaded and on window resize
-  useLayoutEffect(() => {
-    if (!map.current || !isLoaded) return;
-
-    const resizeMap = () => {
-      if (map.current) {
-        map.current.resize();
-      }
-    };
-
-    setTimeout(resizeMap, 0);
-    window.addEventListener("resize", resizeMap);
-    return () => window.removeEventListener("resize", resizeMap);
-  }, [isLoaded]);
-
-  if (spots.filter(s => s.latitude !== undefined && s.longitude !== undefined).length === 0) {
-    return null; // Don't show map if no spots have locations
-  }
+export default function SpotsMap({
+  spots,
+  selectedSpotId,
+  onSpotSelect,
+}: SpotsMapProps) {
+  // This component is now a list, not a map.
+  // We'll render the buttons and the list of spots from your image.
 
   return (
-    <div className="w-full h-[400px] rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700 relative">
-      <div ref={mapContainer} className="w-full h-full" style={{ minHeight: "400px" }} />
+    <div className="flex flex-col h-full text-white">
+      {/* Top Buttons */}
+      <div className="flex gap-2 mb-4 flex-shrink-0">
+        <AddButton />
+        <ModifyButton />
+      </div>
+
+      {/* Scrollable List of Spots */}
+      <div className="flex-1 overflow-y-auto">
+        <ul className="flex flex-col gap-3">
+          {spots.map((spot) => (
+            <li
+              key={spot.id}
+              onClick={() => onSpotSelect(spot)}
+              // Apply different styles if this spot is the selected one
+              className={`flex items-center gap-4 p-2 rounded-lg cursor-pointer transition-all ${
+                selectedSpotId === spot.id
+                  ? "bg-blue-700 ring-2 ring-blue-300" // Highlight style
+                  : "bg-gray-800 hover:bg-gray-700"
+              }`}>
+              {/* Placeholder Image */}
+              <div className="w-16 h-12 bg-gray-600 rounded flex-shrink-0">
+                {/* In a real app, you'd use Next's <Image /> component 
+                  if your 'spot' object had an imageUrl property.
+                */}
+              </div>
+              <span className="font-semibold text-lg">{spot.name}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
-
