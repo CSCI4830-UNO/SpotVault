@@ -72,7 +72,7 @@ export default function EditSpotPage() {
     };
 
     saveSpot(updatedSpot);
-    
+
     // Navigate to spots list after saving
     router.push("/spots");
   };

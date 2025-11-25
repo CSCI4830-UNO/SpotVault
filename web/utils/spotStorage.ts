@@ -1,83 +1,86 @@
 // Spot Storage - Handles saving and loading spots
-// Currently uses browser localStorage (data stays in browser only)
-// Note: This will be replaced with a real database later
 
 import { Spot } from "@/types/spot";
+//import the type to use. 
 
-const STORAGE_KEY = "spotvault_spots"; // Key used to store spots in browser
-
-/**
- * Get all spots from storage
- */
-export function getAllSpots(): Spot[] {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
+export async function getAllSpots(): Promise<Spot[]> {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch (error) {
-    console.error("Error reading spots from storage:", error);
-    return [];
-  }
-}
-
-/**
- * Save a spot to storage
- */
-export function saveSpot(spot: Spot): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    const spots = getAllSpots();
-    const existingIndex = spots.findIndex((s) => s.id === spot.id);
-
-    if (existingIndex >= 0) {
-      // Update existing spot
-      spots[existingIndex] = spot;
-    } else {
-      // Add new spot
-      spots.push(spot);
+    const response = await fetch("/api/spots");
+    if (!response.ok) {
+      throw new Error('HTTP error! status: ${response.status}');
     }
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(spots));
-  } catch (error) {
-    console.error("Error saving spot to storage:", error);
+    const data = await response.json();
+    return data;
+  }
+  catch (error) {
+    console.error("Error fetching spots: ${error}");
+    return [];
   }
 }
 
 /**
- * Delete a spot from storage
- */
-export function deleteSpot(spotId: string): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-
+* Get a single spot by ID
+*/
+export async function getSpotById(spotId: string): Promise<Spot | null> {
   try {
-    const spots = getAllSpots();
-    const filtered = spots.filter((s) => s.id !== spotId);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  } catch (error) {
-    console.error("Error deleting spot from storage:", error);
+    const response = await fetch("/api/spots/${spotId}");
+    if (!response.ok) {
+      throw new Error('HTTP error! status: ${response.status}');
+    }
+    const data = await response.json();
+    return data;
+  }
+  catch (error) {
+    console.error("Error fetching spots: ${error}");
+    return null;
   }
 }
 
-/**
- * Get a single spot by ID
- */
-export function getSpotById(spotId: string): Spot | null {
-  const spots = getAllSpots();
-  return spots.find((s) => s.id === spotId) || null;
+export async function saveSpot(spot: Spot): Promise<Spot | null> {
+  try {
+    const isUpdate = spot.id;
+    const method = isUpdate ? 'PUT' : 'POST';
+    const url = isUpdate ? '/api/spots/${spot.id}' : '/api/spots';
+    const response = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(spot),
+    })
+    if (!response.ok) {
+      throw new Error('HTTP error! status: ${response.status}');
+    }
+    const data = await response.json();
+    return data;
+
+  } catch (error) {
+    console.error("Error saving spot: ${error}");
+    return null;
+  }
 }
+export async function deleteSpot(spotId: string): Promise<boolean> {
+  //returns true (successfully deleted) or false (unable to delete).
+  try {
+
+    const response = await fetch('/api/spots/${spotId}', { method: 'DELETE' });
+
+    if (!response.ok) {
+      throw new Error('HTTP error! status: ${response.status}');
+    }
+    return true;
+
+  } catch (error) {
+    console.error("Error deleting spot: ${error}");
+    return false;
+  }
+
+}
+
 
 /**
  * Generate a unique ID for a new spot
  */
 export function generateSpotId(): string {
   return `spot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
 }
 
