@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack --hostname 127.0.0.1",
     "build": "next build --turbopack",
     "start": "next start --hostname 127.0.0.1",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "maplibre-gl": "^5.11.0",
@@ -15,6 +17,7 @@
     "react-dom": "19.1.0"
   },
   "devDependencies": {
+    "@babel/preset-typescript": "^7.28.5",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/maplibre-gl": "^1.13.2",
