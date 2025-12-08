@@ -1,43 +1,53 @@
 //this file defines routes that require no parameters
+import { getSession } from '@/lib/auth';
 import { supabase } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
-//gets all the spots.
+//gets all the spots visible to the user.
 export async function GET(request: NextRequest) {
   try {
     const { data, error } = await supabase
       .from('spots')
-      .select('*');
-    if (error) {
-      throw error;
-    }
+      .select('*')
+    if (error) throw error;
     return NextResponse.json(data);
   } catch (err) {
-    console.log('error getting spots: ', err);
+    console.log('error fetching spots: ', err);
     return NextResponse.json(
       { error: 'Internal server error. failed to fetch spots.' },
       { status: 500 }
     );
   }
 }
-//creates a new spot. adding users in a bit.
+
+//creates a new spot
 export async function POST(request: NextRequest) {
   try {
+    const { session, error: sessionError } = await getSession();
+    if (sessionError || !session) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+
+    }
     const body = await request.json();
 
-    if (!body.longitude || !body.latitude) {
+    if (!body.longitude || !body.latitude || !body.name) {
       return NextResponse.json(
-        { error: 'longitude and latitude required' },
+        { error: 'longtitude, latitude and name required' },
         { status: 400 }
       );
     }
-
+    //create spot
     const { data, error } = await supabase
       .from('spots')
       .insert({
+        creator_id: session.user.id,
         longitude: body.longitude,
         latitude: body.latitude,
-        comments: body.comments || []
+        name: body.name,
+        is_public: body.is_public || false,
       })
       .select()
       .single();
@@ -52,6 +62,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-//logs in the current user.
-//logs out the current user.
-//posts a new spot with the current user

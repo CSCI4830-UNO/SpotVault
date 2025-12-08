@@ -3,15 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
-    if (!email || !password) {
-      return NextResponse.json(
-        { error: 'Email and password required' },
-        { status: 400 }
-      );
-    }
     const { error } = await logout()
-
+    //why did I have the email & password here?
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 401 })
     }

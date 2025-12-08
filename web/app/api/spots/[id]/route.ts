@@ -1,9 +1,12 @@
 //this file contains routes that require an [id] parameter
+import { getSession } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+
 //get specific spot
 export async function GET(request: NextRequest, { params }: { params: { id: string } }
 ) {
+  //no need to get session,instead rls will check the access permissions.
   try {
     const { id } = params;
 
@@ -23,25 +26,28 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     );
   }
 }
+
 //update spot
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }
 ) {
   try {
+    const { session, error: sessionError } = await getSession();
+    if (sessionError || !session) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const { id } = params;
     const body = await request.json();
 
-    if (!body.longitude || !body.latitude) {
-      return NextResponse.json(
-        { error: 'longitude and latitude required' },
-        { status: 400 }
-      );
-    }
 
     const { data, error } = await supabase
       .from('spots')
       .update({
-        longitude: body.longitude,
-        latitude: body.latitude,
+        name: body.name,
+        is_public: body.is_public,
       })
       .eq('spot_id', id)
       .select()
@@ -61,7 +67,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { id } = params;
-
     const { error } = await supabase
       .from('spots')
       .delete()
