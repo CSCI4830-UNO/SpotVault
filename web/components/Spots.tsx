@@ -10,7 +10,9 @@ interface SpotsMapProps {
   selectedSpotId: string | null;
   onSpotSelect: (spot: Spot) => void;
   onAddClick: () => void;
+  onModifyClick: () => void;
   isAddDisabled?: boolean;
+  isModifyDisabled?: boolean;
 }
 
 export default function Spots({
@@ -18,7 +20,9 @@ export default function Spots({
   selectedSpotId,
   onSpotSelect,
   onAddClick,
+  onModifyClick,
   isAddDisabled = true,
+  isModifyDisabled = true,
 }: SpotsMapProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -54,7 +58,10 @@ export default function Spots({
           onClick={onAddClick}
           disabled={isAddDisabled}
         />
-        <ModifyButton />
+        <ModifyButton
+          onClick={onModifyClick}
+          disabled={isModifyDisabled}
+        />
       </div>
 
       {/* Search Bar */}

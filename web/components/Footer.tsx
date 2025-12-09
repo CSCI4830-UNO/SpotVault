@@ -1,23 +1,30 @@
 "use client";
 
-import { Spot } from "@/types/spot";
+import { Spot, Comment } from "@/types/spot";
+import Comments from "./Comments";
 
 interface FooterProps {
   selectedSpot: Spot | null;
   pendingSpot: { lat: number; lng: number } | null;
+  currentUsername: string;
   onDeleteSpot: () => void;
+  onAddComment: (commentText: string) => void;
+  onDeleteComment: (commentId: string) => void;
 }
 
 export default function Footer({
   selectedSpot,
   pendingSpot,
+  currentUsername,
   onDeleteSpot,
+  onAddComment,
+  onDeleteComment,
 }: FooterProps) {
   return (
-    <footer className="h-[20vh] flex-shrink-0 rounded-lg bg-black p-4">
+    <footer className="h-[30vh] flex-shrink-0 rounded-lg bg-black p-4">
       {selectedSpot ? (
-        <div className="border rounded-lg p-4 h-full flex flex-col justify-between">
-          <div className="grid grid-cols-3 gap-6">
+        <div className="border rounded-lg p-4 h-full flex flex-col">
+          <div className="grid grid-cols-3 gap-6 mb-4 flex-shrink-0">
             <div>
               <h4 className="text-sm font-semibold text-gray-300 mb-2">Coordinates</h4>
               <p className="text-white text-sm">{selectedSpot.latitude?.toFixed(4) || "N/A"}</p>
@@ -48,7 +55,17 @@ export default function Footer({
             </div>
           </div>
 
-          <div className="mt-4">
+          {/* Comments Section */}
+          <div className="flex-1 min-h-0 mb-4">
+            <Comments
+              comments={selectedSpot.comments || []}
+              currentUsername={currentUsername}
+              onAddComment={onAddComment}
+              onDeleteComment={onDeleteComment}
+            />
+          </div>
+
+          <div className="flex-shrink-0">
             <button
               onClick={onDeleteSpot}
               className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-colors"
