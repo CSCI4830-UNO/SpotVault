@@ -144,6 +144,15 @@ export default function Home() {
   };
 
   const handleListSelect = (list: SpotList | null) => {
+    // Handle Favorites list (virtual list with id "__favorites__")
+    if (list && list.id === "__favorites__") {
+      setSelectedList(list);
+      setSelectedSpot(null);
+      setPendingSpot(null);
+      setActiveTab("lists");
+      return;
+    }
+    
     setSelectedList(list);
     if (list) {
       setSelectedSpot(null);
@@ -251,6 +260,25 @@ export default function Home() {
 
     setSpots(updatedSpots);
     setSelectedSpot(updatedSpot);
+  };
+
+  const handleToggleFavorite = (spotId: string) => {
+    const spot = spots.find((s) => s.id === spotId);
+    if (!spot) return;
+
+    const updatedSpot: Spot = {
+      ...spot,
+      isFavorite: !spot.isFavorite,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const updatedSpots = spots.map((s) => (s.id === spotId ? updatedSpot : s));
+    setSpots(updatedSpots);
+
+    // Update selectedSpot if it's the one being toggled
+    if (selectedSpot && selectedSpot.id === spotId) {
+      setSelectedSpot(updatedSpot);
+    }
   };
 
   const handleAddSpotToCurrentList = () => {
@@ -438,6 +466,9 @@ export default function Home() {
           onModifyClick={handleModifyClick}
           onCreateList={() => setIsListModalOpen(true)}
           onAddSpotToList={selectedList ? handleAddSpotToCurrentList : undefined}
+          onToggleFavorite={handleToggleFavorite}
+          onModifyClick={handleModifyClick}
+          isModifyDisabled={!selectedSpot}
           activeTab={activeTab || "spots"}
           onTabChange={(tab) => {
             setActiveTab(tab);

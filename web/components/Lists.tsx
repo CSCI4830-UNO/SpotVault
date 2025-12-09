@@ -14,7 +14,12 @@ interface ListsProps {
   onSpotSelect: (spot: Spot) => void;
   selectedSpotId: string | null;
   onAddSpotToList?: () => void;
+  onModifyClick?: () => void;
+  isModifyDisabled?: boolean;
+  onToggleFavorite?: (spotId: string) => void;
 }
+
+const FAVORITES_LIST_ID = "__favorites__";
 
 export default function Lists({
   lists,
@@ -25,12 +30,21 @@ export default function Lists({
   onSpotSelect,
   selectedSpotId,
   onAddSpotToList,
+  onModifyClick,
+  isModifyDisabled,
+  onToggleFavorite,
 }: ListsProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
   // Get spots for the selected list
   const listSpots = useMemo(() => {
     if (!selectedListId) return [];
+    
+    // Handle Favorites list specially
+    if (selectedListId === FAVORITES_LIST_ID) {
+      return spots.filter((spot) => spot.isFavorite === true);
+    }
+    
     const list = lists.find((l) => l.id === selectedListId);
     if (!list) return [];
     return spots.filter((spot) => list.spotIds.includes(spot.id));
@@ -77,6 +91,10 @@ export default function Lists({
 
   if (selectedListId) {
     // Show spots in the selected list
+    const listName = selectedListId === FAVORITES_LIST_ID 
+      ? "Favorites" 
+      : lists.find((l) => l.id === selectedListId)?.name || "List";
+    
     return (
       <div className="flex flex-col h-full text-white">
         <div className="flex items-center gap-2 mb-4 flex-shrink-0">
@@ -86,18 +104,29 @@ export default function Lists({
           >
             ← Back
           </button>
-          <h3 className="font-semibold text-lg">
-            {lists.find((l) => l.id === selectedListId)?.name || "List"}
-          </h3>
+          <h3 className="font-semibold text-lg">{listName}</h3>
         </div>
 
-        {/* Add Button */}
-        {onAddSpotToList && (
+        {/* Add and Modify Buttons */}
+        {selectedListId !== FAVORITES_LIST_ID && onAddSpotToList && (
           <div className="flex gap-2 mb-4 flex-shrink-0">
             <AddButton
               onClick={onAddSpotToList}
               disabled={false}
             />
+            {onModifyClick && (
+              <button
+                onClick={onModifyClick}
+                disabled={isModifyDisabled}
+                className={`px-4 py-2 rounded font-semibold transition-colors ${
+                  isModifyDisabled
+                    ? "bg-gray-600 cursor-not-allowed text-gray-400"
+                    : "bg-blue-700 hover:bg-blue-600 cursor-pointer text-white"
+                }`}
+              >
+                MODIFY
+              </button>
+            )}
           </div>
         )}
 
@@ -140,7 +169,28 @@ export default function Lists({
                   ) : (
                     <div className="w-16 h-12 bg-gray-600 rounded flex-shrink-0"></div>
                   )}
-                  <span className="font-semibold text-lg">{spot.name}</span>
+                  <span className="font-semibold text-lg flex-1">{spot.name}</span>
+                  {/* Favorite Star */}
+                  {onToggleFavorite && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleFavorite(spot.id);
+                      }}
+                      className="flex-shrink-0 text-yellow-400 hover:text-yellow-300 transition-colors"
+                      title={spot.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                    >
+                      {spot.isFavorite ? (
+                        <svg className="w-5 h-5 fill-current" viewBox="0 0 20 20">
+                          <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 fill-current" viewBox="0 0 20 20">
+                          <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" fillOpacity="0.3" />
+                        </svg>
+                      )}
+                    </button>
+                  )}
                 </li>
               ))
             )}
@@ -177,6 +227,26 @@ export default function Lists({
       {/* Scrollable List of Lists */}
       <div className="flex-1 overflow-y-auto">
         <ul className="flex flex-col gap-3">
+          {/* Permanent Favorites List */}
+          {(!searchTerm || "favorites".includes(searchTerm.toLowerCase())) && (
+            <li
+              onClick={() => onListSelect({ id: FAVORITES_LIST_ID, name: "Favorites" } as SpotList)}
+              className="flex items-center gap-4 p-2 rounded-lg cursor-pointer transition-all bg-gray-800 hover:bg-gray-700"
+            >
+              <div className="flex items-center gap-2 flex-1">
+                <svg className="w-5 h-5 text-yellow-400 fill-current" viewBox="0 0 20 20">
+                  <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
+                </svg>
+                <div className="flex-1">
+                  <span className="font-semibold text-lg block">Favorites</span>
+                  <span className="text-gray-500 text-xs">
+                    {spots.filter((s) => s.isFavorite).length} spot{spots.filter((s) => s.isFavorite).length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+              </div>
+            </li>
+          )}
+          
           {filteredLists.length === 0 ? (
             <li className="text-gray-400 text-center py-4">
               {searchTerm ? "No lists match your search" : "No lists yet. Create one to get started!"}

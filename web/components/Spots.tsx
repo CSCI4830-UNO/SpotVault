@@ -13,6 +13,7 @@ interface SpotsMapProps {
   onModifyClick: () => void;
   isAddDisabled?: boolean;
   isModifyDisabled?: boolean;
+  onToggleFavorite?: (spotId: string) => void;
 }
 
 export default function Spots({
@@ -23,6 +24,7 @@ export default function Spots({
   onModifyClick,
   isAddDisabled = true,
   isModifyDisabled = true,
+  onToggleFavorite,
 }: SpotsMapProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -98,7 +100,28 @@ export default function Spots({
               ) : (
                 <div className="w-16 h-12 bg-gray-600 rounded flex-shrink-0"></div>
               )}
-              <span className="font-semibold text-lg">{spot.name}</span>
+              <span className="font-semibold text-lg flex-1">{spot.name}</span>
+              {/* Favorite Star */}
+              {onToggleFavorite && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFavorite(spot.id);
+                  }}
+                  className="flex-shrink-0 text-yellow-400 hover:text-yellow-300 transition-colors"
+                  title={spot.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                >
+                  {spot.isFavorite ? (
+                    <svg className="w-5 h-5 fill-current" viewBox="0 0 20 20">
+                      <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5 fill-current" viewBox="0 0 20 20">
+                      <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" fillOpacity="0.3" />
+                    </svg>
+                  )}
+                </button>
+              )}
             </li>
           ))}
         </ul>
