@@ -19,6 +19,7 @@ interface SidebarProps {
   onModifyClick: () => void;
   onCreateList: () => void;
   onAddSpotToList?: () => void;
+  onToggleFavorite?: (spotId: string) => void;
   activeTab?: "spots" | "lists";
   onTabChange?: (tab: "spots" | "lists") => void;
 }
@@ -36,6 +37,7 @@ export default function Sidebar({
   onModifyClick,
   onCreateList,
   onAddSpotToList,
+  onToggleFavorite,
   activeTab: externalActiveTab,
   onTabChange,
 }: SidebarProps) {
@@ -101,6 +103,7 @@ export default function Sidebar({
           isModifyDisabled={isModifyDisabled}
           onAddClick={onAddClick}
           onModifyClick={onModifyClick}
+          onToggleFavorite={onToggleFavorite}
         />
       ) : (
         <Lists
@@ -112,6 +115,9 @@ export default function Sidebar({
           onSpotSelect={onSpotSelect}
           selectedSpotId={selectedSpotId}
           onAddSpotToList={onAddSpotToList}
+          onModifyClick={onModifyClick}
+          isModifyDisabled={isModifyDisabled}
+          onToggleFavorite={onToggleFavorite}
         />
       )}
     </aside>

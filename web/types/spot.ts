@@ -23,6 +23,7 @@ export interface Spot {
   photos?: string[];
   comments?: Comment[];
   listId?: string; // ID of the list this spot belongs to
+  isFavorite?: boolean; // Whether this spot is marked as a favorite
   createdAt: string;
   updatedAt: string;
 }
