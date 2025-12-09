@@ -1,4 +1,15 @@
 /**
+ * Comment data model
+ * Represents a comment on a spot
+ */
+export interface Comment {
+  id: string;
+  text: string;
+  username: string;
+  createdAt: string;
+}
+
+/**
  * Spot data model
  * Represents a location that users can save and manage
  */
@@ -10,6 +21,7 @@ export interface Spot {
   longitude?: number;
   tags?: string[];
   photos?: string[];
+  comments?: Comment[];
   createdAt: string;
   updatedAt: string;
 }
