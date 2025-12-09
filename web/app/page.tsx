@@ -4,11 +4,14 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Map from "@/components/Map";
 import { Spot, Comment } from "@/types/spot";
+import { SpotList } from "@/types/list";
 import Sidebar from "@/components/Sidebar";
 import SpotCreationModal from "@/components/SpotCreationModal";
+import ListCreationModal from "@/components/ListCreationModal";
 import Footer from "@/components/Footer";
 import HelpButton from "@/components/HelpButton";
 import { getAllSpots, saveSpot } from "@/utils/spotStorage";
+import { getAllLists, saveList, generateListId } from "@/utils/listStorage";
 
 // --- EXAMPLE DATA ---
 const exampleSpotsData: Spot[] = [
@@ -49,12 +52,16 @@ function getUsername(): string {
 export default function Home() {
   const router = useRouter();
   const [spots, setSpots] = useState<Spot[]>([]);
+  const [lists, setLists] = useState<SpotList[]>([]);
   const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
+  const [selectedList, setSelectedList] = useState<SpotList | null>(null);
+  const [activeTab, setActiveTab] = useState<"spots" | "lists">("spots");
   const [pendingSpot, setPendingSpot] = useState<{ lat: number; lng: number } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isListModalOpen, setIsListModalOpen] = useState(false);
   const [currentUsername] = useState<string>(() => getUsername());
 
-  // Load spots from localStorage on mount
+  // Load spots and lists from localStorage on mount
   useEffect(() => {
     const storedSpots = getAllSpots();
     if (storedSpots.length > 0) {
@@ -65,6 +72,9 @@ export default function Home() {
       // Save example data to localStorage
       exampleSpotsData.forEach(spot => saveSpot(spot));
     }
+
+    const storedLists = getAllLists();
+    setLists(storedLists);
   }, []);
 
   // Save spots to localStorage whenever they change
@@ -74,15 +84,24 @@ export default function Home() {
     }
   }, [spots]);
 
+  // Save lists to localStorage whenever they change
+  useEffect(() => {
+    lists.forEach(list => saveList(list));
+  }, [lists]);
+
   // Update selectedSpot when spots change
   useEffect(() => {
     if (selectedSpot) {
       const updatedSpot = spots.find(s => s.id === selectedSpot.id);
       if (updatedSpot) {
         setSelectedSpot(updatedSpot);
+      } else {
+        // Spot was deleted, clear selection
+        setSelectedSpot(null);
       }
     }
   }, [spots, selectedSpot?.id]);
+
 
   const handleSpotListClick = (spot: Spot) => {
     setPendingSpot(null);
@@ -90,6 +109,7 @@ export default function Home() {
       setSelectedSpot(null);
     } else {
       setSelectedSpot(spot);
+      // Don't automatically switch to lists tab - let user stay where they are
     }
   };
 
@@ -110,6 +130,159 @@ export default function Home() {
     }
   };
 
+  const handleCreateList = (name: string, description: string) => {
+    const newList: SpotList = {
+      id: generateListId(),
+      name,
+      description: description || undefined,
+      spotIds: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setLists([...lists, newList]);
+    setIsListModalOpen(false);
+  };
+
+  const handleListSelect = (list: SpotList | null) => {
+    setSelectedList(list);
+    if (list) {
+      setSelectedSpot(null);
+      setPendingSpot(null);
+      // Only switch to lists tab if we're explicitly selecting a list
+      setActiveTab("lists");
+    }
+  };
+
+  const handleListClick = (listId: string) => {
+    const list = lists.find((l) => l.id === listId);
+    if (list) {
+      setActiveTab("lists");
+      handleListSelect(list);
+    }
+  };
+
+  const handleAddSpotToList = (listId: string) => {
+    if (!selectedSpot) return;
+
+    // Update the spot's listId
+    const updatedSpot: Spot = {
+      ...selectedSpot,
+      listId,
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Update the list's spotIds
+    const list = lists.find((l) => l.id === listId);
+    if (list && !list.spotIds.includes(selectedSpot.id)) {
+      const updatedList: SpotList = {
+        ...list,
+        spotIds: [...list.spotIds, selectedSpot.id],
+        updatedAt: new Date().toISOString(),
+      };
+      setLists(lists.map((l) => (l.id === listId ? updatedList : l)));
+    }
+
+    // Update spots
+    const updatedSpots = spots.map((spot) =>
+      spot.id === selectedSpot.id ? updatedSpot : spot
+    );
+    setSpots(updatedSpots);
+    setSelectedSpot(updatedSpot);
+  };
+
+  const handleRemoveSpotFromList = () => {
+    if (!selectedSpot || !selectedSpot.listId) return;
+
+    const list = lists.find((l) => l.id === selectedSpot.listId);
+    if (list) {
+      // Remove spot from list
+      const updatedList: SpotList = {
+        ...list,
+        spotIds: list.spotIds.filter((id) => id !== selectedSpot.id),
+        updatedAt: new Date().toISOString(),
+      };
+      setLists(lists.map((l) => (l.id === list.id ? updatedList : l)));
+    }
+
+    // Remove listId from spot
+    const updatedSpot: Spot = {
+      ...selectedSpot,
+      listId: undefined,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const updatedSpots = spots.map((spot) =>
+      spot.id === selectedSpot.id ? updatedSpot : spot
+    );
+    setSpots(updatedSpots);
+    setSelectedSpot(updatedSpot);
+  };
+
+  const handleAddPhoto = (photoDataUrl: string) => {
+    if (!selectedSpot) return;
+
+    const updatedSpot: Spot = {
+      ...selectedSpot,
+      photos: [...(selectedSpot.photos || []), photoDataUrl],
+      updatedAt: new Date().toISOString(),
+    };
+
+    const updatedSpots = spots.map((spot) =>
+      spot.id === selectedSpot.id ? updatedSpot : spot
+    );
+
+    setSpots(updatedSpots);
+    setSelectedSpot(updatedSpot);
+  };
+
+  const handleDeletePhoto = (photoIndex: number) => {
+    if (!selectedSpot || !selectedSpot.photos) return;
+
+    const updatedPhotos = selectedSpot.photos.filter((_, index) => index !== photoIndex);
+    const updatedSpot: Spot = {
+      ...selectedSpot,
+      photos: updatedPhotos.length > 0 ? updatedPhotos : undefined,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const updatedSpots = spots.map((spot) =>
+      spot.id === selectedSpot.id ? updatedSpot : spot
+    );
+
+    setSpots(updatedSpots);
+    setSelectedSpot(updatedSpot);
+  };
+
+  const handleAddSpotToCurrentList = () => {
+    if (!selectedList || !selectedSpot) return;
+    
+    // Check if spot is already in the list
+    if (selectedList.spotIds.includes(selectedSpot.id)) {
+      return; // Already in list
+    }
+
+    // Add spot to list
+    const updatedList: SpotList = {
+      ...selectedList,
+      spotIds: [...selectedList.spotIds, selectedSpot.id],
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Update spot's listId
+    const updatedSpot: Spot = {
+      ...selectedSpot,
+      listId: selectedList.id,
+      updatedAt: new Date().toISOString(),
+    };
+
+    setLists(lists.map((l) => (l.id === selectedList.id ? updatedList : l)));
+    const updatedSpots = spots.map((spot) =>
+      spot.id === selectedSpot.id ? updatedSpot : spot
+    );
+    setSpots(updatedSpots);
+    setSelectedSpot(updatedSpot);
+  };
+
   const handleSaveSpot = (name: string, tags: string, description: string) => {
     if (!pendingSpot) return;
 
@@ -126,8 +299,9 @@ export default function Home() {
       tags: processedTags,
       description: description.trim() || undefined,
       comments: [],
+      photos: [],
       createdAt: new Date().toString(),
-      updatedAt: new Date().toString(),
+      updatedAt: new Date().toISOString(),
     };
 
     setSpots([...spots, newSpot]);
@@ -230,6 +404,13 @@ export default function Home() {
         />
       )}
 
+      {isListModalOpen && (
+        <ListCreationModal
+          onCancel={() => setIsListModalOpen(false)}
+          onSave={handleCreateList}
+        />
+      )}
+
       <div className="flex gap-2 overflow-hidden h-[65vh]">
         <main className="flex-[3] rounded-lg bg-black p-4">
           <Map
@@ -246,12 +427,25 @@ export default function Home() {
 
         <Sidebar
           spots={spots}
+          lists={lists}
           selectedSpotId={selectedSpot?.id || null}
+          selectedListId={selectedList?.id || null}
           onSpotSelect={handleSpotListClick}
+          onListSelect={handleListSelect}
           isAddDisabled={!pendingSpot}
           isModifyDisabled={!selectedSpot}
           onAddClick={handleAddClick}
           onModifyClick={handleModifyClick}
+          onCreateList={() => setIsListModalOpen(true)}
+          onAddSpotToList={selectedList ? handleAddSpotToCurrentList : undefined}
+          activeTab={activeTab || "spots"}
+          onTabChange={(tab) => {
+            setActiveTab(tab);
+            if (tab === "spots") {
+              // Clear list selection when switching to spots tab
+              setSelectedList(null);
+            }
+          }}
         />
       </div>
       
@@ -259,9 +453,15 @@ export default function Home() {
         selectedSpot={selectedSpot}
         pendingSpot={pendingSpot}
         currentUsername={currentUsername}
+        lists={lists}
         onDeleteSpot={handleDeleteSpot}
         onAddComment={handleAddComment}
         onDeleteComment={handleDeleteComment}
+        onListClick={handleListClick}
+        onAddSpotToList={handleAddSpotToList}
+        onRemoveSpotFromList={handleRemoveSpotFromList}
+        onAddPhoto={handleAddPhoto}
+        onDeletePhoto={handleDeletePhoto}
       />
     </div>
   );

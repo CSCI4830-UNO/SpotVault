@@ -88,8 +88,16 @@ export default function Spots({
                   : "bg-gray-800 hover:bg-gray-700"
               }`}
             >
-              {/* Placeholder Image */}
-              <div className="w-16 h-12 bg-gray-600 rounded flex-shrink-0"></div>
+              {/* Photo Preview or Placeholder */}
+              {spot.photos && spot.photos.length > 0 ? (
+                <img
+                  src={spot.photos[0]}
+                  alt={spot.name}
+                  className="w-16 h-12 object-cover rounded flex-shrink-0"
+                />
+              ) : (
+                <div className="w-16 h-12 bg-gray-600 rounded flex-shrink-0"></div>
+              )}
               <span className="font-semibold text-lg">{spot.name}</span>
             </li>
           ))}

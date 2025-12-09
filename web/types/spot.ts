@@ -22,6 +22,7 @@ export interface Spot {
   tags?: string[];
   photos?: string[];
   comments?: Comment[];
+  listId?: string; // ID of the list this spot belongs to
   createdAt: string;
   updatedAt: string;
 }
