@@ -5,7 +5,8 @@ import { getSession } from '@/lib/auth'
 //get details of a specific user spot, like when someone clicks on a listing.
 export async function GET(request: NextRequest, { params }: { params: { id: String } }) {
   try {
-    const { id } = params
+    const { id } = await params
+    //next.js is telling me to await, but the linter says its pointless. ¯\_(ツ)_/¯
     const { data, error } = await supabase.from('user_spots').select('*').eq('id', id).single();
     if (error) throw error;
     return NextResponse.json(data);
@@ -20,7 +21,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: Stri
 //update/modify a user_spot 
 export async function PUT(request: NextRequest, { params }: { params: { id: String } }) {
   try {
-    const { id } = params;
+    const { id } = await params
+    //next.js is telling me to await, but the linter says its pointless. ¯\_(ツ)_/¯
     const { session, error: sessionError } = await getSession();
     if (sessionError || !session) {
       return NextResponse.json(
@@ -53,7 +55,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: Stri
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { id } = params
+    const { id } = await params
+    //next.js is telling me to await, but the linter says its pointless. ¯\_(ツ)_/¯
     const { session, error: sessionError } = await getSession()
     if (sessionError || !session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

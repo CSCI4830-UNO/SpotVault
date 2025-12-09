@@ -60,36 +60,3 @@ export async function POST(request: NextRequest) {
   }
 }
 
-//unfollow a user, pass id in body as following_id
-export async function DELETE(request: NextRequest) {
-  try {
-    const { session, error: sessionError } = await getSession()
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const body = await request.json()
-
-    if (!body.following_id) {
-      return NextResponse.json(
-        { error: 'following_id required' },
-        { status: 400 }
-      )
-    }
-
-    const { error } = await supabase
-      .from('followers')
-      .delete()
-      .eq('follower_id', session.user.id)
-      .eq('following_id', body.following_id)
-
-    if (error) throw error
-    return NextResponse.json({ message: 'Unfollowed' })
-  } catch (err) {
-    console.error('Error unfollowing:', err)
-    return NextResponse.json(
-      { error: 'Failed to unfollow' },
-      { status: 500 }
-    )
-  }
-}

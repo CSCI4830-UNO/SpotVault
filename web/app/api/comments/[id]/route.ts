@@ -11,7 +11,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
         { status: 401 }
       )
     }
-    const { id } = params
+    const { id } = await params
+    //next.js is telling me to await, but the linter says its pointless. ¯\_(ツ)_/¯
     const { data: comment, error: fetchError } = await supabase
       .from('comments')
       .select('user_id')

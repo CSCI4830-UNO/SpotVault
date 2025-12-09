@@ -8,7 +8,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 ) {
   //no need to get session,instead rls will check the access permissions.
   try {
-    const { id } = params;
+    const { id } = await params
+    //next.js is telling me to await, but the linter says its pointless. ¯\_(ツ)_/¯
 
     const { data, error } = await supabase
       .from('spots')
@@ -39,7 +40,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       )
     }
 
-    const { id } = params;
+    const { id } = await params
+    //next.js is telling me to await, but the linter says its pointless. ¯\_(ツ)_/¯
     const body = await request.json();
 
 
@@ -66,7 +68,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 //delete spot
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { id } = params;
+    const { id } = await params
+    //next.js is telling me to await, but the linter says its pointless. ¯\_(ツ)_/¯
     const { error } = await supabase
       .from('spots')
       .delete()
