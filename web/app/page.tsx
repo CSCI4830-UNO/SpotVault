@@ -7,6 +7,7 @@ import { Spot, Comment } from "@/types/spot";
 import Sidebar from "@/components/Sidebar";
 import SpotCreationModal from "@/components/SpotCreationModal";
 import Footer from "@/components/Footer";
+import HelpButton from "@/components/HelpButton";
 import { getAllSpots, saveSpot } from "@/utils/spotStorage";
 
 // --- EXAMPLE DATA ---
@@ -221,6 +222,7 @@ export default function Home() {
 
   return (
     <div className="h-full p-2 text-white flex flex-col gap-2">
+      <HelpButton />
       {isModalOpen && (
         <SpotCreationModal
           onCancel={() => setIsModalOpen(false)}
