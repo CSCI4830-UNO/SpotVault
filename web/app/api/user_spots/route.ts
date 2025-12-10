@@ -1,5 +1,4 @@
-import { supabase } from '@/lib/supabase'
-import { getSession } from '@/lib/auth'
+import { getSupabaseClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
 //get all user_spots for a user. use user parameter to get user_spots for a speific user or spot
@@ -10,6 +9,7 @@ export async function GET(request: NextRequest) {
     // other search param is for when you click on a spot.
     const userId = request.nextUrl.searchParams.get('user_id')
     const spotId = request.nextUrl.searchParams.get('spot_id')
+    const supabase = await getSupabaseClient()
     let query = supabase.from('user_spots').select('*')
     if (userId) {
       query = query.eq('user_id', userId)
@@ -32,7 +32,8 @@ export async function GET(request: NextRequest) {
 //create new user_spot. requires spot_id
 export async function POST(request: NextRequest) {
   try {
-    const { session, error: sessionError } = await getSession();
+    const supabase = await getSupabaseClient()
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     if (sessionError || !session) {
       return NextResponse.json(
         { error: 'Unauthorized' },

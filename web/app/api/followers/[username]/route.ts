@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
-import { getSession } from '@/lib/auth'
+import { getSupabaseClient } from '@/lib/supabase'
 export async function DELETE(request: NextRequest, { params }: { params: { username: string } }) {
   try {
+    const supabase = await getSupabaseClient()
     const { username } = await params
     //next.js is telling me to await, but the linter says its pointless. ¯\_(ツ)_/¯
-    const { session, error: sessionError } = await getSession()
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     if (sessionError || !session) {
       return NextResponse.json(
         { error: 'Unauthorized' },

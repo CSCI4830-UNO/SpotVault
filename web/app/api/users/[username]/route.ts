@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ username: string }> }) {
   try {
+    const supabase = await getSupabaseClient()
     const { username } = await params;
     let query = supabase.from('users').select('*').eq('username', username);
 

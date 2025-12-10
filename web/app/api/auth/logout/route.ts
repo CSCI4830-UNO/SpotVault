@@ -1,9 +1,10 @@
-import { logout } from '@/lib/auth'
+import { getSupabaseClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const { error } = await logout()
+    const supabase = await getSupabaseClient()
+    const { error } = await supabase.auth.signOut()
     //why did I have the email & password here?
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 401 })

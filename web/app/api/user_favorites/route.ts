@@ -1,5 +1,4 @@
-import { supabase } from '@/lib/supabase'
-import { getSession } from '@/lib/auth'
+import { getSupabaseClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
@@ -12,7 +11,7 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       )
     }
-
+    const supabase = await getSupabaseClient()
     const { data, error } = await supabase
       .from('user_favorites')
       .select('*, spots(*)')
@@ -32,7 +31,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { session, error: sessionError } = await getSession()
+    const supabase = await getSupabaseClient()
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     if (sessionError || !session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -48,9 +48,7 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: session.user.id,
         spot_id: body.spot_id
-      })
-      .select()
-      .single()
+      }).select()
 
     if (error) throw error
     return NextResponse.json(data, { status: 201 })
@@ -65,7 +63,8 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { session, error: sessionError } = await getSession()
+    const supabase = await getSupabaseClient()
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     if (sessionError || !session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

@@ -1,5 +1,4 @@
-import { supabase } from '@/lib/supabase'
-import { getSession } from '@/lib/auth'
+import { getSupabaseClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
 //gets you the people you follow.
@@ -13,6 +12,7 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       )
     }
+    const supabase = await getSupabaseClient()
     let query = supabase.from('followers').select('*').eq('follower_id', userId)
     const { data, error } = await query
     if (error) throw error
@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
 //use this to follow someone, pass the following id in the body of the request.
 export async function POST(request: NextRequest) {
   try {
-    const { session, error: sessionError } = await getSession()
+    const supabase = await getSupabaseClient()
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     if (sessionError || !session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
-import { getSession } from '@/lib/auth'
+import { getSupabaseClient } from '@/lib/supabase'
 
 //get details of a specific user spot, like when someone clicks on a listing.
 export async function GET(request: NextRequest, { params }: { params: { id: String } }) {
   try {
+    const supabase = await getSupabaseClient()
     const { id } = await params
     //next.js is telling me to await, but the linter says its pointless. ¯\_(ツ)_/¯
     const { data, error } = await supabase.from('user_spots').select('*').eq('id', id).single();
@@ -22,8 +22,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: Stri
 export async function PUT(request: NextRequest, { params }: { params: { id: String } }) {
   try {
     const { id } = await params
+    const supabase = await getSupabaseClient()
     //next.js is telling me to await, but the linter says its pointless. ¯\_(ツ)_/¯
-    const { session, error: sessionError } = await getSession();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     if (sessionError || !session) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -57,7 +58,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   try {
     const { id } = await params
     //next.js is telling me to await, but the linter says its pointless. ¯\_(ツ)_/¯
-    const { session, error: sessionError } = await getSession()
+    const supabase = await getSupabaseClient()
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     if (sessionError || !session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

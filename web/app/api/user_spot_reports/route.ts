@@ -1,11 +1,11 @@
 //user_spot_reports
-import { supabase } from '@/lib/supabase'
-import { getSession } from '@/lib/auth'
+import { getSupabaseClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const { session, error: sessionError } = await getSession()
+    const supabase = await getSupabaseClient()
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     if (sessionError || !session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -22,8 +22,7 @@ export async function POST(request: NextRequest) {
         user_id: session.user.id,
         user_spot_id: body.user_spot_id,
         reason: body.reason
-      })
-
+      }).select()
     if (error) throw error
     return NextResponse.json(data, { status: 201 })
   } catch (err) {

@@ -1,11 +1,11 @@
 //this file defines routes that require no parameters
-import { getSession } from '@/lib/auth';
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
 //gets all the spots visible to the user.
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await getSupabaseClient()
     const { data, error } = await supabase
       .from('spots')
       .select('*')
@@ -23,7 +23,8 @@ export async function GET(request: NextRequest) {
 //creates a new spot
 export async function POST(request: NextRequest) {
   try {
-    const { session, error: sessionError } = await getSession();
+    const supabase = await getSupabaseClient()
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     if (sessionError || !session) {
       return NextResponse.json(
         { error: 'Unauthorized' },

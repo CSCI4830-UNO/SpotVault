@@ -1,6 +1,4 @@
-import { signUp } from '@/lib/auth'
-import { login } from '@/lib/auth';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
@@ -12,12 +10,13 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    const { data, error } = await signUp(email, password)
+    const supabase = await getSupabaseClient()
+    const { data, error } = await supabase.auth.signUp({ email, password })
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 401 })
     }
-    const { data: logindata, error: loginError } = await login(email, password);
+    const { data: logindata, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
     if (loginError) {
       return NextResponse.json({ error: loginError }, { status: 401 })
     }

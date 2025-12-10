@@ -1,13 +1,13 @@
 //this file contains routes that require an [id] parameter
-import { getSession } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 
 //get specific spot
 export async function GET(request: NextRequest, { params }: { params: { id: string } }
 ) {
   //no need to get session,instead rls will check the access permissions.
   try {
+    const supabase = await getSupabaseClient()
     const { id } = await params
     //next.js is telling me to await, but the linter says its pointless. ¯\_(ツ)_/¯
 
@@ -32,7 +32,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }
 ) {
   try {
-    const { session, error: sessionError } = await getSession();
+    const supabase = await getSupabaseClient()
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     if (sessionError || !session) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -51,9 +52,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         name: body.name,
         is_public: body.is_public,
       })
-      .eq('spot_id', id)
-      .select()
-      .single();
+      .eq('creator_id', id)
 
     if (error) throw error;
     return NextResponse.json(data);
@@ -70,6 +69,16 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   try {
     const { id } = await params
     //next.js is telling me to await, but the linter says its pointless. ¯\_(ツ)_/¯
+    const supabase = await getSupabaseClient()
+    const { data: spot, error: spotError } = await supabase
+      .from('spots')
+      .select('id')
+      .eq('id', id)
+      .single()
+
+    if (spotError || !spot) {
+      return NextResponse.json({ error: 'Spot not found' }, { status: 404 })
+    }
     const { error } = await supabase
       .from('spots')
       .delete()
