@@ -76,6 +76,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       .update({
         name: body.name,
         is_public: body.is_public,
+        tags: body.tags || []
       })
       .eq('spot_id', id)
 
