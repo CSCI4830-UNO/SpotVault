@@ -10,54 +10,177 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ }) => {
-  //useState() returns curr_val, setter_function()
+  //UI States
   const [ModalOpen, setModalOpen] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  //Form States
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  async function handleLogin() {
-    if (!email || !password) {
-      alert("email & password required");
-      return;
+  const [username, setUsername] = useState("");
+
+  //form pre-validation handler (ensures form is populated, passes error messages)
+  async function validateForm(): Promise<boolean> {
+    if (!email.trim()) {
+      setError("Email is required")
+      return false;
     }
-    setLoading(true);
-    const response = await fetch('/api/auth/login', {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, isSignUp: false }),
-    })
-    const data = await response.json();
-    setLoading(false);
-    if (data.error) {
-      alert("Login failed: " + data.error)
-    } else {
+    if (!password.trim()) {
+      setError("Password is required")
+      return false;
+    }
+    if (isSignUp && !username.trim()) {
+      setError("Username is required")
+      return false;
+    }
+    setError("")
+    return true;
+  }
+
+  //login/signup handler
+  async function handleAuth() {
+    if (!validateForm()) {
+      return
+    }
+    setLoading(true)
+    try {
+      const endpoint = isSignUp ? '/api/auth/signup' : '/api/auth/login'
+      const body = isSignUp ? { email, password, username } : { email, password }
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+      const data = await response.json()
+      if (!response.ok || data.error) {
+        setError("Failed to Log In. Try Again.")
+        setLoading(false)
+        return
+      }
+      //user is logged in
+      localStorage.setItem('user_email', email);
+      localStorage.setItem('logged_in', 'true');
+      //clear form for clarity
       setEmail("");
       setPassword("");
+      setUsername("");
       setModalOpen(false);
+      setIsSignUp(false);
+      setIsLoggedIn(true);
+    } catch (error) {
+      setError("Potetial Network Error. Please Try Again.")
+      console.log("Network error: " + (error instanceof Error ? error.message : "Unknown error"))
+    } finally {
+      setLoading(false)
     }
   }
 
+  //logout handler
+  async function handleLogout() {
+    try {
+      const response = await fetch('/api/auth/logout', { method: "POST" })
+      if (!response.ok) {
+        throw new Error('Logout failed');
+      }
+      localStorage.removeItem('spotvault_user_email');
+      localStorage.removeItem('spotvault_logged_in');
+      setIsLoggedIn(false);
+      setEmail("");
+      setPassword("");
+    } catch (error) {
+      alert("Error logging out. Please try again.")
+      console.error("Logout Error", error)
+    }
+  }
+  //seperated the things didn't want to build new modal so it's 2 in one.
+  function openSignUpModal() {
+    setIsSignUp(true);
+    setError("");
+    setEmail("");
+    setPassword("");
+    setUsername("");
+    setModalOpen(true);
+  };
+
+  function openLoginModal() {
+    setIsSignUp(false);
+    setError("");
+    setEmail("");
+    setPassword("");
+    setModalOpen(true);
+  };
+
   return (
     <header>
-      <nav className="container mx-auto flex justify-center p-7">
+      <div className="container mx-auto flex justify-between items-center px-7 py-4">
         <Link href="/" className="text-5xl font-bold tracking-widest">
           SpotVault
         </Link>
-      </nav>
-      <button onClick={() => setModalOpen(true)} className="rounded-md bg-black/20 px-4 py-2 text-sm font-medium text-white focus:not-data-focus:outline-none data-focus:outline data-focus:outline-white data-hover:bg-black/30">log in</button>
+        <div className="flex items-center gap-4">
+          <HelpButton />
+
+          {isLoggedIn ? (
+            // LOGGED IN: Show logout button
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleLogout}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-medium transition"
+              >
+                Log Out
+              </button>
+            </div>
+          ) : (
+            // NOT LOGGED IN: Show login/signup buttons
+            <div className="flex gap-2">
+              <button
+                onClick={openLoginModal}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition"
+              >
+                Log In
+              </button>
+              <button
+                onClick={openSignUpModal}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-medium transition"
+              >
+                Sign Up
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
       <Dialog open={ModalOpen} onClose={() => setModalOpen(false)}>
-        <div className="fixed inset-0 bg-black bg-opacity-50" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40" />
+        <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
+
           <DialogPanel className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-md p-6">
             <DialogTitle className="text-2xl font-bold mb-4">
-              Login
+              {isSignUp ? "Create Account" : "Log In"}
             </DialogTitle>
-
+            {error && (
+              <div className="mb-4 p-3 bg-red-500/20 border border-red-500 text-red-300 rounded text-sm">
+                {error}
+              </div>
+            )}
+            {isSignUp && (
+              <input
+                type="text"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                disabled={loading}
+                className="w-full px-4 py-2 mb-4 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-black dark:text-white"
+              />
+            )}
             <input
               type="email"
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
               className="w-full px-4 py-2 mb-4 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-black dark:text-white"
             />
 
@@ -66,16 +189,17 @@ const Header: React.FC<HeaderProps> = ({ }) => {
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
               className="w-full px-4 py-2 mb-4 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-black dark:text-white"
             />
 
             <div className="flex gap-4">
               <button
-                onClick={handleLogin}
+                onClick={handleAuth}
                 disabled={loading}
                 className="flex-1 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
               >
-                {loading ? "Logging in..." : "Login"}
+                {loading ? "Logging in..." : isSignUp ? "Sign Up" : "Login"}
               </button>
               <button
                 onClick={() => setModalOpen(false)}
