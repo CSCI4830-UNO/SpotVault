@@ -47,7 +47,7 @@ export default function NewSpotPage() {
     };
 
     saveSpot(newSpot);
-    
+
     // Navigate to spots list after saving
     router.push("/spots");
   };
