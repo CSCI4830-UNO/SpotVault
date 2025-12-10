@@ -13,6 +13,7 @@ interface MapProps {
   selectedSpotId?: string | null;
   pendingSpot?: { lat: number; lng: number } | null;
   onMapClick?: (lat: number, lng: number) => void;
+  onMarkerClick?: (spot: Spot) => void;
 }
 
 export default function Map({
@@ -23,6 +24,7 @@ export default function Map({
   selectedSpotId = null,
   pendingSpot = null,
   onMapClick,
+  onMarkerClick,
 }: MapProps) {
   const defaultLat = 41.2565;
   const defaultLng = -95.9345;
@@ -33,6 +35,17 @@ export default function Map({
 
   const markers = useRef(new global.Map<string, maplibregl.Marker>());
   const pendingMarker = useRef<maplibregl.Marker | null>(null);
+  const onMapClickRef = useRef(onMapClick);
+  const onMarkerClickRef = useRef(onMarkerClick);
+  
+  // Keep refs updated
+  useEffect(() => {
+    onMapClickRef.current = onMapClick;
+  }, [onMapClick]);
+  
+  useEffect(() => {
+    onMarkerClickRef.current = onMarkerClick;
+  }, [onMarkerClick]);
 
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
@@ -79,15 +92,6 @@ export default function Map({
       map.current.on("load", () => {
         setIsLoaded(true);
         setTimeout(() => map.current?.resize(), 0);
-
-        map.current?.on("click", (e) => {
-          if (e.defaultPrevented) return;
-          
-          const { lat, lng } = e.lngLat;
-          if (onMapClick) {
-            onMapClick(lat, lng);
-          }
-        });
       });
     };
     setTimeout(initMap, 0);
@@ -100,6 +104,34 @@ export default function Map({
       map.current = null;
     };
   }, []);
+
+  // Set up click handler when map is loaded
+  useEffect(() => {
+    if (!map.current || !isLoaded) return;
+
+    const handleMapClick = (e: maplibregl.MapLayerMouseEvent) => {
+      // Check if clicking directly on a marker element
+      const target = e.originalEvent.target as HTMLElement;
+      const clickedMarker = target.closest('.maplibregl-marker');
+      
+      if (clickedMarker) {
+        return; // Don't create new spot when clicking existing markers
+      }
+      
+      const { lat, lng } = e.lngLat;
+      if (onMapClickRef.current) {
+        onMapClickRef.current(lat, lng);
+      }
+    };
+
+    map.current.on("click", handleMapClick);
+
+    return () => {
+      if (map.current) {
+        map.current.off("click", handleMapClick);
+      }
+    };
+  }, [isLoaded]);
 
   useEffect(() => {
     if (!map.current || !isLoaded) return;
@@ -121,16 +153,22 @@ export default function Map({
     spots.forEach((spot) => {
       if (spot.latitude && spot.longitude) {
         const isSelected = spot.id === selectedSpotId;
-        const color = isSelected ? "#e74c3c" : "#3498db";
+        const color = isSelected ? "#2ecc71" : "#3498db"; // Green when selected, blue otherwise
 
         const newMarker = new maplibregl.Marker({ color })
           .setLngLat([spot.longitude, spot.latitude])
           .addTo(map.current!);
         
-        // Prevent map click event when clicking a marker
-        newMarker.getElement().addEventListener('click', (e) => {
-          e.preventDefault();
-        });
+        // Add click handler to marker
+        const markerElement = newMarker.getElement();
+        markerElement.style.cursor = 'pointer';
+        markerElement.classList.add('maplibregl-marker');
+        markerElement.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (onMarkerClickRef.current) {
+            onMarkerClickRef.current(spot);
+          }
+        }, true);
 
         markers.current.set(spot.id, newMarker);
       }
@@ -140,15 +178,17 @@ export default function Map({
   useEffect(() => {
     if (!map.current || !isLoaded) return;
 
+    // Remove existing pending marker
     if (pendingMarker.current) {
       pendingMarker.current.remove();
       pendingMarker.current = null;
     }
 
-    if (pendingSpot) {
+    // Add new pending marker if there's a pending spot
+    if (pendingSpot && pendingSpot.lat && pendingSpot.lng) {
       pendingMarker.current = new maplibregl.Marker({ color: "#2ecc71" }) // Green
         .setLngLat([pendingSpot.lng, pendingSpot.lat])
-        .addTo(map.current!);
+        .addTo(map.current);
     }
   }, [pendingSpot, isLoaded]);
 

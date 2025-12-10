@@ -1,8 +1,10 @@
 "use client";
+
 import Link from 'next/link';
 import { useState } from "react";
 import { Button, Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import React from 'react';
+import HelpButton from './HelpButton';
 
 interface HeaderProps {
 }

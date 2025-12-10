@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import { Spot } from "@/types/spot";
 import AddButton from "./AddButton";
 import ModifyButton from "./ModifyButton";
@@ -9,7 +10,10 @@ interface SpotsMapProps {
   selectedSpotId: string | null;
   onSpotSelect: (spot: Spot) => void;
   onAddClick: () => void;
+  onModifyClick: () => void;
   isAddDisabled?: boolean;
+  isModifyDisabled?: boolean;
+  onToggleFavorite?: (spotId: string) => void;
 }
 
 export default function Spots({
@@ -17,8 +21,37 @@ export default function Spots({
   selectedSpotId,
   onSpotSelect,
   onAddClick,
+  onModifyClick,
   isAddDisabled = true,
+  isModifyDisabled = true,
+  onToggleFavorite,
 }: SpotsMapProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Filter spots based on search term (searches name, description, and tags)
+  const filteredSpots = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return spots;
+    }
+
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    return spots.filter((spot) => {
+      // Search in name
+      if (spot.name?.toLowerCase().includes(lowerSearchTerm)) {
+        return true;
+      }
+      // Search in description
+      if (spot.description?.toLowerCase().includes(lowerSearchTerm)) {
+        return true;
+      }
+      // Search in tags
+      if (spot.tags?.some((tag) => tag.toLowerCase().includes(lowerSearchTerm))) {
+        return true;
+      }
+      return false;
+    });
+  }, [spots, searchTerm]);
+
   return (
     <div className="flex flex-col h-full text-white">
       {/* Top Buttons */}
@@ -27,13 +60,27 @@ export default function Spots({
           onClick={onAddClick}
           disabled={isAddDisabled}
         />
-        <ModifyButton />
+        <ModifyButton
+          onClick={onModifyClick}
+          disabled={isModifyDisabled}
+        />
+      </div>
+
+      {/* Search Bar */}
+      <div className="mb-4 flex-shrink-0">
+        <input
+          type="text"
+          placeholder="Search spots..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full px-4 py-2 rounded bg-gray-800 text-white placeholder-gray-400 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
       </div>
 
       {/* Scrollable List of Spots */}
       <div className="flex-1 overflow-y-auto">
         <ul className="flex flex-col gap-3">
-          {spots.map((spot) => (
+          {filteredSpots.map((spot) => (
             <li
               key={spot.id}
               onClick={() => onSpotSelect(spot)}
@@ -43,9 +90,38 @@ export default function Spots({
                   : "bg-gray-800 hover:bg-gray-700"
               }`}
             >
-              {/* Placeholder Image */}
-              <div className="w-16 h-12 bg-gray-600 rounded flex-shrink-0"></div>
-              <span className="font-semibold text-lg">{spot.name}</span>
+              {/* Photo Preview or Placeholder */}
+              {spot.photos && spot.photos.length > 0 ? (
+                <img
+                  src={spot.photos[0]}
+                  alt={spot.name}
+                  className="w-16 h-12 object-cover rounded flex-shrink-0"
+                />
+              ) : (
+                <div className="w-16 h-12 bg-gray-600 rounded flex-shrink-0"></div>
+              )}
+              <span className="font-semibold text-lg flex-1">{spot.name}</span>
+              {/* Favorite Star */}
+              {onToggleFavorite && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFavorite(spot.id);
+                  }}
+                  className="flex-shrink-0 text-yellow-400 hover:text-yellow-300 transition-colors"
+                  title={spot.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                >
+                  {spot.isFavorite ? (
+                    <svg className="w-5 h-5 fill-current" viewBox="0 0 20 20">
+                      <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5 fill-current" viewBox="0 0 20 20">
+                      <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" fillOpacity="0.3" />
+                    </svg>
+                  )}
+                </button>
+              )}
             </li>
           ))}
         </ul>

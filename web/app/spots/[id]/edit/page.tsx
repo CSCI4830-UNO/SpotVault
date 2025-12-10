@@ -72,9 +72,9 @@ export default function EditSpotPage() {
     };
 
     saveSpot(updatedSpot);
-
-    // Navigate to spots list after saving
-    router.push("/spots");
+    
+    // Navigate back to home page after saving
+    router.push("/");
   };
 
   if (isLoading) {

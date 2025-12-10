@@ -12,7 +12,7 @@ export default function AddButton({
       className={`flex-1 text-white font-bold py-2 px-4 rounded transition-colors ${
         disabled
           ? "bg-gray-600 cursor-not-allowed"
-          : "bg-green-700 hover:bg-green-600"
+          : "bg-green-700 hover:bg-green-600 cursor-pointer"
       }`}
     >
       ADD
