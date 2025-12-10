@@ -2,7 +2,11 @@ import { Spot } from "@/types/spot";
 
 export async function getAllSpots(): Promise<Spot[]> {
   try {
-    const response = await fetch("/api/spots");
+    const response = await fetch("/api/spots", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',  // Include cookies in request
+    });
     if (!response.ok) {
       throw new Error('HTTP error! status: ${response.status}');
     }
@@ -17,7 +21,11 @@ export async function getAllSpots(): Promise<Spot[]> {
 
 export async function getSpotById(spotId: string): Promise<Spot | null> {
   try {
-    const response = await fetch("/api/spots/${spotId}");
+    const response = await fetch("/api/spots/${spotId}", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',  // Include cookies in request
+    });
     if (!response.ok) {
       throw new Error('HTTP error! status: ${response.status}');
     }
@@ -40,6 +48,7 @@ export async function saveSpot(spot: Spot): Promise<Spot | null> {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(spot),
+      credentials: 'include'
     })
     if (!response.ok) {
       throw new Error('HTTP error! status: ${response.status}');
@@ -56,7 +65,7 @@ export async function deleteSpot(spotId: string): Promise<boolean> {
   //returns true (successfully deleted) or false (unable to delete).
   try {
 
-    const response = await fetch('/api/spots/${spotId}', { method: 'DELETE' });
+    const response = await fetch('/api/spots/${spotId}', { method: 'DELETE', credentials: 'include' });
 
     if (!response.ok) {
       throw new Error('HTTP error! status: ${response.status}');

@@ -1,21 +1,27 @@
 "use client";
-
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { useState } from "react";
 import { Button, Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import React from 'react';
 import HelpButton from './HelpButton';
+import { useAuth } from '@/lib/AuthContext';
 
 interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ }) => {
   //UI States
+  //checks if you're already logged in on pageload.
+  useEffect(() => {
+    const loggedIn = localStorage.getItem('spotvault_logged_in') === 'true';
+    setIsLoggedIn(loggedIn);
+  }, []);
   const [ModalOpen, setModalOpen] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { isLoggedIn, setIsLoggedIn } = useAuth();
 
   //Form States
   const [email, setEmail] = useState("");
@@ -61,8 +67,7 @@ const Header: React.FC<HeaderProps> = ({ }) => {
         return
       }
       //user is logged in
-      localStorage.setItem('user_email', email);
-      localStorage.setItem('logged_in', 'true');
+      localStorage.setItem('spotvault_logged_in', 'true');
       //clear form for clarity
       setEmail("");
       setPassword("");
@@ -85,7 +90,6 @@ const Header: React.FC<HeaderProps> = ({ }) => {
       if (!response.ok) {
         throw new Error('Logout failed');
       }
-      localStorage.removeItem('spotvault_user_email');
       localStorage.removeItem('spotvault_logged_in');
       setIsLoggedIn(false);
       setEmail("");
