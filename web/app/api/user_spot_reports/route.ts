@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     if (!body.user_spot_id || !body.reason) {
       return NextResponse.json(
         { error: 'user_spot_id and reason required' },
-        { status: 405 }
+        { status: 400 }
       )
     }
     const { data, error } = await supabase

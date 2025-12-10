@@ -45,6 +45,31 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     //next.js is telling me to await, but the linter says its pointless. ¯\_(ツ)_/¯
     const body = await request.json();
 
+    const { data: spot, error: fetchError } = await supabase
+      .from('spots')
+      .select('is_public, creator_id')
+      .eq('spot_id', id)
+      .single()
+
+    if (fetchError || !spot) {
+      return NextResponse.json({ error: 'Spot not found' }, { status: 404 })
+    }
+
+    if (spot.creator_id !== session.user.id) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      )
+    }
+
+    // idk why rls isn't working but whatever no time so here we are.
+    if (spot.is_public && body.is_public === false) {
+      return NextResponse.json(
+        { error: 'Cannot unpublish a public spot' },
+        { status: 403 }
+      )
+    }
+
 
     const { data, error } = await supabase
       .from('spots')
@@ -52,7 +77,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         name: body.name,
         is_public: body.is_public,
       })
-      .eq('creator_id', id)
+      .eq('spot_id', id)
 
     if (error) throw error;
     return NextResponse.json(data);
@@ -70,14 +95,27 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const { id } = await params
     //next.js is telling me to await, but the linter says its pointless. ¯\_(ツ)_/¯
     const supabase = await getSupabaseClient()
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    if (!session || !sessionError) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
     const { data: spot, error: spotError } = await supabase
       .from('spots')
-      .select('id')
-      .eq('id', id)
+      .select('spot_id, creator_id',)
+      .eq('spot_id', id)
       .single()
 
     if (spotError || !spot) {
       return NextResponse.json({ error: 'Spot not found' }, { status: 404 })
+    }
+    if (spot.creator_id !== session.user.id) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      )
     }
     const { error } = await supabase
       .from('spots')

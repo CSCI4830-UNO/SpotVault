@@ -42,7 +42,23 @@ export async function POST(request: NextRequest) {
     if (!body.spot_id) {
       return NextResponse.json({ error: 'spot_id required' }, { status: 400 })
     }
+    const { data: spot, error: spotError } = await supabase
+      .from('spots')
+      .select('spot_id, is_public, creator_id')
+      .eq('spot_id', body.spot_id)
+      .single()
 
+    if (spotError || !spot) {
+      return NextResponse.json({ error: 'Spot not found' }, { status: 404 })
+    }
+    //all of this is taken care of by rls. in actuality I just screwed my testcases so I didnt realize that it was fine anyways, but here we are.
+    if (!spot.is_public && spot.creator_id !== session.user.id) {
+      console.log("\n\n\n\ninaccessible spot accessed\n\n\n\n")
+      return NextResponse.json(
+        { error: 'Cannot favorite inaccessible spot' },
+        { status: 403 }
+      )
+    }
     const { data, error } = await supabase
       .from('user_favorites')
       .insert({
