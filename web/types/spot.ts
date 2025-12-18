@@ -26,5 +26,8 @@ export interface Spot {
   isFavorite?: boolean; // Whether this spot is marked as a favorite
   createdAt: string;
   updatedAt: string;
+  isPublic: boolean;
+  creator_id: string;
+  creator_username?: string,
 }
 

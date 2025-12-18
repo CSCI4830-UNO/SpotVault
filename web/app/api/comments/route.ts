@@ -1,65 +1,52 @@
 import { getSupabaseClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET(request: NextRequest) {
-  try {
-    //now thinking user_spot had a better name-- visits, but it's too late to refactor it now...
-    //using search param so we can fetch comments for a user_spot
-    const userSpotId = request.nextUrl.searchParams.get('user_spot_id')
-    if (!userSpotId) {
-      return NextResponse.json(
-        { error: 'user_spot_id query param required' },
-        { status: 400 }
-      )
-    }
-    const supabase = await getSupabaseClient()
-    const { data, error } = await supabase
-      .from('comments')
-      .select('*')
-      .eq('user_spot_id', userSpotId)
-      .order('created_at', { ascending: false })
-
-    if (error) throw error
-    return NextResponse.json(data)
-  } catch (err) {
-    console.error('Error fetching comments:', err)
-    return NextResponse.json(
-      { error: 'Failed to fetch comments' },
-      { status: 500 }
-    )
-  }
-}
-
 //requires authentication + a user_spot_id to comment to.
 export async function POST(request: NextRequest) {
   try {
     const supabase = await getSupabaseClient()
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    if (sessionError || !session) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await request.json()
 
-    if (!body.user_spot_id || !body.content) {
+    if (!body.spot_id || !body.text || !body.creator_id) {
       return NextResponse.json(
-        { error: 'user_spot_id and content required' },
+        { error: 'spot_id and creator_id and text are required.' },
         { status: 400 }
       )
     }
-
-    const { data, error } = await supabase
+    const { data: userSpot, error: userSpotError } = await supabase
+      .from('user_spots')
+      .select('id')
+      .eq('spot_id', body.spot_id)
+      .eq('user_id', body.creator_id)
+      .single()
+    if (!userSpot || userSpotError) {
+      return NextResponse.json(
+        { error: 'Spot not Found' },
+        { status: 404 }
+      )
+    }
+    //working spot, working user_spot.
+    const { data: comment, error: commentError } = await supabase
       .from('comments')
       .insert({
-        user_spot_id: body.user_spot_id,
-        user_id: session.user.id,
-        content: body.content
+        user_spot_id: userSpot.id,
+        user_id: user.id,
+        content: body.text
       })
-      .select()
+      .select('id, content, created_at, users(username)')
       .single()
-
-    if (error) throw error
-    return NextResponse.json(data, { status: 201 })
+    if (commentError) throw commentError
+    return NextResponse.json({
+      id: comment.id,
+      text: comment.content,
+      username: comment.users.username,
+      createdAt: comment.created_at,
+    })
   } catch (err) {
     console.error('Error creating comment:', err)
     return NextResponse.json(

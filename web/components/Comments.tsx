@@ -43,7 +43,7 @@ export default function Comments({
   return (
     <div className="flex flex-col h-full">
       <h4 className="text-sm font-semibold text-gray-300 mb-3">Comments</h4>
-      
+
       {/* Comments List */}
       <div className="flex-1 overflow-y-auto mb-4 space-y-3">
         {comments.length === 0 ? (

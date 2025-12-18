@@ -1,18 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server'
+
 import { getSupabaseClient } from '@/lib/supabase'
+import { NextRequest, NextResponse } from 'next/server'
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const supabase = await getSupabaseClient()
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    if (sessionError || !session) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
-    const { id } = await params
+    const { id } = params
     //next.js is telling me to await, but the linter says its pointless. ¯\_(ツ)_/¯
+    //verifying ownership
     const { data: comment, error: fetchError } = await supabase
       .from('comments')
       .select('user_id')
@@ -21,13 +23,13 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
     if (fetchError) throw fetchError
 
-    if (comment.user_id !== session.user.id) {
+    if (comment.user_id !== user.id) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
       )
     }
-
+    //deleting comment
     const { error } = await supabase
       .from('comments')
       .delete()

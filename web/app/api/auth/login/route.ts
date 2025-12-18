@@ -12,11 +12,31 @@ export async function POST(request: NextRequest) {
     }
     const supabase = await getSupabaseClient()
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 401 })
+    if (!data || error) {
+      return NextResponse.json(
+        { error: error?.message ?? 'Invalid login credentials' },
+        { status: 401 }
+      );
     }
-    return NextResponse.json({ data }, { status: 200 });
+    const { data: userInfo, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', data.user?.id)
+      .single();
+    if (userError || !userInfo) {
+      return NextResponse.json(
+        { error: 'User profile not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      user: {
+        id: userInfo.id,
+        username: userInfo.username,
+        favoriteListId: userInfo.favorites_list_id,
+      }
+    }, { status: 200 });
   } catch (err) {
     console.log('error getting spots: ', err);
     return NextResponse.json(

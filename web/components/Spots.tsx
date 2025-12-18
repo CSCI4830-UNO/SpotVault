@@ -4,9 +4,12 @@ import { useState, useMemo } from "react";
 import { Spot } from "@/types/spot";
 import AddButton from "./AddButton";
 import ModifyButton from "./ModifyButton";
+import { SpotList } from "@/types/list";
+import SaveButton from "./SaveButton";
 
 interface SpotsMapProps {
   spots: Spot[];
+  lists?: SpotList[];
   selectedSpotId: string | null;
   onSpotSelect: (spot: Spot) => void;
   onAddClick: () => void;
@@ -14,6 +17,8 @@ interface SpotsMapProps {
   isAddDisabled?: boolean;
   isModifyDisabled?: boolean;
   onToggleFavorite?: (spotId: string) => void;
+  isBrowse?: boolean;
+  onSaveToList?: (spotId: string, listId: string) => void;
 }
 
 export default function Spots({
@@ -25,6 +30,9 @@ export default function Spots({
   isAddDisabled = true,
   isModifyDisabled = true,
   onToggleFavorite,
+  lists = [],
+  onSaveToList,
+  isBrowse,
 }: SpotsMapProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -55,16 +63,18 @@ export default function Spots({
   return (
     <div className="flex flex-col h-full text-white">
       {/* Top Buttons */}
-      <div className="flex gap-2 mb-4 flex-shrink-0">
-        <AddButton
-          onClick={onAddClick}
-          disabled={isAddDisabled}
-        />
-        <ModifyButton
-          onClick={onModifyClick}
-          disabled={isModifyDisabled}
-        />
-      </div>
+      {!isBrowse && (
+        <div className="flex gap-2 mb-4 flex-shrink-0">
+          <AddButton
+            onClick={onAddClick}
+            disabled={isAddDisabled}
+          />
+          <ModifyButton
+            onClick={onModifyClick}
+            disabled={isModifyDisabled}
+          />
+        </div>
+      )}
 
       {/* Search Bar */}
       <div className="mb-4 flex-shrink-0">
@@ -84,11 +94,10 @@ export default function Spots({
             <li
               key={spot.id}
               onClick={() => onSpotSelect(spot)}
-              className={`flex items-center gap-4 p-2 rounded-lg cursor-pointer transition-all ${
-                selectedSpotId === spot.id
-                  ? "bg-blue-700 ring-2 ring-blue-300"
-                  : "bg-gray-800 hover:bg-gray-700"
-              }`}
+              className={`flex items-center gap-4 p-2 rounded-lg cursor-pointer transition-all ${selectedSpotId === spot.id
+                ? "bg-blue-700 ring-2 ring-blue-300"
+                : "bg-gray-800 hover:bg-gray-700"
+                }`}
             >
               {/* Photo Preview or Placeholder */}
               {spot.photos && spot.photos.length > 0 ? (
@@ -101,26 +110,17 @@ export default function Spots({
                 <div className="w-16 h-12 bg-gray-600 rounded flex-shrink-0"></div>
               )}
               <span className="font-semibold text-lg flex-1">{spot.name}</span>
-              {/* Favorite Star */}
-              {onToggleFavorite && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleFavorite(spot.id);
-                  }}
-                  className="flex-shrink-0 text-yellow-400 hover:text-yellow-300 transition-colors"
-                  title={spot.isFavorite ? "Remove from favorites" : "Add to favorites"}
-                >
-                  {spot.isFavorite ? (
-                    <svg className="w-5 h-5 fill-current" viewBox="0 0 20 20">
-                      <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5 fill-current" viewBox="0 0 20 20">
-                      <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" fillOpacity="0.3" />
-                    </svg>
-                  )}
-                </button>
+              {isBrowse && (
+                <span className="text-gray-400 text-xs">
+                  by {spot.creator_username ? spot.creator_username : "Anonymous"}
+                </span>
+              )}
+              {onSaveToList && (
+                <SaveButton
+                  spotId={spot.id}
+                  lists={lists}
+                  onSaveToList={(listId) => onSaveToList(spot.id, listId)}
+                />
               )}
             </li>
           ))}

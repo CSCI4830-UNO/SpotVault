@@ -1,3 +1,5 @@
+import { Spot } from "./spot";
+
 /**
  * List data model
  * Represents a collection of spots
@@ -9,5 +11,7 @@ export interface SpotList {
   spotIds: string[];
   createdAt: string;
   updatedAt: string;
+  userId?: string;
+  spots?: Spot[];
 }
 

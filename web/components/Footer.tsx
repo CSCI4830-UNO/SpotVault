@@ -4,6 +4,8 @@ import { Spot, Comment } from "@/types/spot";
 import { SpotList } from "@/types/list";
 import Comments from "./Comments";
 import SpotPhotos from "./SpotPhotos";
+import { useAuth } from "@/lib/AuthContext";
+import EditableField from "./utils/editablefield";
 
 interface FooterProps {
   selectedSpot: Spot | null;
@@ -14,141 +16,134 @@ interface FooterProps {
   onAddComment: (commentText: string) => void;
   onDeleteComment: (commentId: string) => void;
   onListClick: (listId: string) => void;
-  onAddSpotToList?: (listId: string) => void;
-  onRemoveSpotFromList?: () => void;
+  onRemoveSpotFromList: () => void;
   onAddPhoto?: (photoDataUrl: string) => void;
   onDeletePhoto?: (photoIndex: number) => void;
+  activeTab: "spots" | "lists" | "browse";
+  selectedList: SpotList | null;
+  onPublish: () => void;
+  onUpdateSpot(name: string, description: string, tags: string[]): void;
 }
 
 export default function Footer({
   selectedSpot,
   pendingSpot,
   currentUsername,
+  onPublish,
   lists,
   onDeleteSpot,
   onAddComment,
   onDeleteComment,
   onListClick,
-  onAddSpotToList,
   onRemoveSpotFromList,
   onAddPhoto,
   onDeletePhoto,
+  activeTab,
+  selectedList,
+  onUpdateSpot,
 }: FooterProps) {
-  const spotList = selectedSpot?.listId
-    ? lists.find((l) => l.id === selectedSpot.listId)
-    : null;
-  const availableLists = lists.filter((l) => l.id !== selectedSpot?.listId);
+
+  const { userId } = useAuth()
   return (
-    <footer className="h-[30vh] flex-shrink-0 rounded-lg bg-black p-4">
+    <footer className="h-[50vh] flex-shrink-0 rounded-lg bg-black p-4">
       {selectedSpot ? (
         <div className="border rounded-lg p-4 h-full flex flex-col">
-          <div className="grid grid-cols-3 gap-6 mb-4 flex-shrink-0">
-            <div>
-              <h4 className="text-sm font-semibold text-gray-300 mb-2">Coordinates</h4>
-              <p className="text-white text-sm">{selectedSpot.latitude?.toFixed(4) || "N/A"}</p>
-              <p className="text-white text-sm">{selectedSpot.longitude?.toFixed(4) || "N/A"}</p>
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold text-gray-300 mb-2">Notes</h4>
-              <p className="text-white text-sm max-h-16 overflow-hidden">
-                {selectedSpot.description || "None"}
-              </p>
-            </div>
-            <div>
+          <div className="flex gap-4 h-full">
+            {/*left*/}
+            <div className="flex flex-col gap-4 w-1/4 flex-shrink-0">
+              <div>
+                <h1><EditableField
+                  value={selectedSpot.name || ""}
+                  onSave={(newName: string) => {
+                    onUpdateSpot(
+                      newName,
+                      selectedSpot?.description || "",
+                      selectedSpot?.tags || []
+                    );
+                  }}
+                  isLocked={selectedSpot.isPublic}
+                  isTextarea={true}
+                /></h1>
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-gray-300 mb-2">Coordinates</h4>
+                <p className="text-white text-sm">{selectedSpot.latitude?.toFixed(4) || "N/A"}</p>
+                <p className="text-white text-sm">{selectedSpot.longitude?.toFixed(4) || "N/A"}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-gray-300 mb-2">Notes</h4>
+                <EditableField
+                  value={selectedSpot.description || ""}
+                  onSave={(newDescription: string) => {
+                    onUpdateSpot(
+                      selectedSpot?.name || "",
+                      newDescription,
+                      selectedSpot?.tags || []
+                    );
+                  }}
+                  isLocked={selectedSpot.isPublic}
+                  isTextarea={true}
+                />
+              </div>
               <h4 className="text-sm font-semibold text-gray-300 mb-2">Tags</h4>
               <div className="flex flex-wrap gap-2">
-                {selectedSpot.tags && selectedSpot.tags.length > 0 ? (
-                  selectedSpot.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="bg-gray-700 text-white text-xs px-2 py-1 rounded"
-                    >
-                      {tag}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-gray-400 text-xs">None</span>
-                )}
+                <EditableField
+                  value={selectedSpot.tags?.join(", ") || ""}
+                  onSave={(newTagsString) => {
+                    const newTags = newTagsString
+                      .split(",")
+                      .map((tag) => tag.trim())
+                      .filter((tag) => tag.length > 0);
+                    onUpdateSpot(
+                      selectedSpot?.name || "",
+                      selectedSpot?.description || "",
+                      newTags
+                    );
+                  }}
+                  isLocked={selectedSpot.isPublic}
+                />
               </div>
-            </div>
-          </div>
-
-          {/* Photos Section */}
-          {onAddPhoto && onDeletePhoto && (
-            <div className="mb-4 flex-shrink-0">
-              <SpotPhotos
-                photos={selectedSpot.photos || []}
-                onAddPhoto={onAddPhoto}
-                onDeletePhoto={onDeletePhoto}
-              />
-            </div>
-          )}
-
-          {/* List Information */}
-          <div className="mb-4 flex-shrink-0">
-            <h4 className="text-sm font-semibold text-gray-300 mb-2">List</h4>
-            {spotList ? (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => onListClick(spotList.id)}
-                  className="text-blue-400 hover:text-blue-300 underline text-sm"
-                >
-                  {spotList.name}
-                </button>
-                {onRemoveSpotFromList && (
-                  <button
-                    onClick={onRemoveSpotFromList}
-                    className="text-red-400 hover:text-red-300 text-xs"
-                    title="Remove from list"
-                  >
-                    ×
+              <div className="flex flex-col gap-2 mt-auto">
+                {/*created a div to hold the buttons cuz there's 3 of 'em and they look weird stacked up like that.*/}
+                {activeTab === "lists" && selectedList && (
+                  <button onClick={onRemoveSpotFromList}
+                    className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition-colors text-sm" >
+                    Remove from List
+                  </button>
+                )}
+                {!selectedSpot.isPublic && selectedSpot.creator_id == userId && (
+                  <button onClick={onPublish} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors text-sm" >
+                    Publish
+                  </button>
+                )}
+                {!selectedSpot.isPublic && selectedSpot.creator_id == userId && (
+                  <button onClick={onDeleteSpot}
+                    className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-colors" >
+                    DELETE SPOT
                   </button>
                 )}
               </div>
-            ) : (
-              <div>
-                {availableLists.length > 0 && onAddSpotToList ? (
-                  <select
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        onAddSpotToList(e.target.value);
-                        e.target.value = "";
-                      }
-                    }}
-                    className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    defaultValue=""
-                  >
-                    <option value="">Add to list...</option>
-                    {availableLists.map((list) => (
-                      <option key={list.id} value={list.id}>
-                        {list.name}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <span className="text-gray-400 text-xs">Not in any list</span>
-                )}
+            </div>
+            {/* middle - Comments Section */}
+            <div className="flex-1 min-h-0">
+              <Comments
+                comments={selectedSpot.comments || []}
+                currentUsername={currentUsername}
+                onAddComment={onAddComment}
+                onDeleteComment={onDeleteComment}
+              />
+            </div>
+
+            {/* right - photos section */}
+            {onAddPhoto && onDeletePhoto && (
+              <div className="flex flex-col gap-2 w-1/4 flex-shrink-0">
+                <SpotPhotos
+                  photos={selectedSpot.photos || []}
+                  onAddPhoto={onAddPhoto}
+                  onDeletePhoto={onDeletePhoto}
+                />
               </div>
             )}
-          </div>
-
-          {/* Comments Section */}
-          <div className="flex-1 min-h-0 mb-4">
-            <Comments
-              comments={selectedSpot.comments || []}
-              currentUsername={currentUsername}
-              onAddComment={onAddComment}
-              onDeleteComment={onDeleteComment}
-            />
-          </div>
-
-          <div className="flex-shrink-0">
-            <button
-              onClick={onDeleteSpot}
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-colors"
-            >
-              DELETE SPOT
-            </button>
           </div>
         </div>
       ) : pendingSpot ? (
@@ -159,7 +154,8 @@ export default function Footer({
         <div className="text-gray-500 flex items-center justify-center h-full">
           Select a spot or click the map to add a new one.
         </div>
-      )}
-    </footer>
-  );
-}
+      )
+      }
+    </footer >
+  )
+};

@@ -21,7 +21,16 @@ const Header: React.FC<HeaderProps> = ({ }) => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { isLoggedIn, setIsLoggedIn } = useAuth();
+  const {
+    isLoggedIn,
+    setIsLoggedIn,
+    userId,
+    setUserId,
+    username: authUsername,
+    setUsername: setAuthUsername,
+    favoriteListId,
+    setFavoriteListId,
+  } = useAuth()
 
   //Form States
   const [email, setEmail] = useState("");
@@ -60,21 +69,28 @@ const Header: React.FC<HeaderProps> = ({ }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       })
-      const data = await response.json()
-      if (!response.ok || data.error) {
+      const userData = await response.json()
+      if (!response.ok || userData.error) {
         setError("Failed to Log In. Try Again.")
         setLoading(false)
         return
       }
       //user is logged in
+      setIsLoggedIn(true);
+      setUserId(userData.user.id);
+      setUsername(userData.user.username);
+      setFavoriteListId(userData.user.favoriteListId);
+      // Store in localStorage
       localStorage.setItem('spotvault_logged_in', 'true');
+      localStorage.setItem('spotvault_user_id', userData.user.id);
+      localStorage.setItem('spotvault_username', userData.user.username);
+      localStorage.setItem('spotvault_favorite_list_id', userData.user.favoriteListId);
       //clear form for clarity
       setEmail("");
       setPassword("");
       setUsername("");
       setModalOpen(false);
       setIsSignUp(false);
-      setIsLoggedIn(true);
     } catch (error) {
       setError("Potetial Network Error. Please Try Again.")
       console.log("Network error: " + (error instanceof Error ? error.message : "Unknown error"))
@@ -90,10 +106,14 @@ const Header: React.FC<HeaderProps> = ({ }) => {
       if (!response.ok) {
         throw new Error('Logout failed');
       }
-      localStorage.removeItem('spotvault_logged_in');
       setIsLoggedIn(false);
+      setUserId(null);
+      setAuthUsername(null);
+      setFavoriteListId(null);
       setEmail("");
       setPassword("");
+      localStorage.clear();
+      window.location.reload();
     } catch (error) {
       alert("Error logging out. Please try again.")
       console.error("Logout Error", error)
@@ -129,6 +149,7 @@ const Header: React.FC<HeaderProps> = ({ }) => {
           {isLoggedIn ? (
             // LOGGED IN: Show logout button
             <div className="flex items-center gap-4">
+              {authUsername}
               <button
                 onClick={handleLogout}
                 className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-medium transition"

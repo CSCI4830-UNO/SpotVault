@@ -8,6 +8,7 @@ import AddButton from "./AddButton";
 interface ListsProps {
   lists: SpotList[];
   spots: Spot[];
+  publicSpots: Spot[];
   selectedListId: string | null;
   onListSelect: (list: SpotList | null) => void;
   onCreateList: () => void;
@@ -17,6 +18,7 @@ interface ListsProps {
   onModifyClick?: () => void;
   isModifyDisabled?: boolean;
   onToggleFavorite?: (spotId: string) => void;
+  onDeleteList: (listId: string) => void;
 }
 
 const FAVORITES_LIST_ID = "__favorites__";
@@ -24,6 +26,7 @@ const FAVORITES_LIST_ID = "__favorites__";
 export default function Lists({
   lists,
   spots,
+  publicSpots,
   selectedListId,
   onListSelect,
   onCreateList,
@@ -33,21 +36,19 @@ export default function Lists({
   onModifyClick,
   isModifyDisabled,
   onToggleFavorite,
+  onDeleteList,
 }: ListsProps) {
+
   const [searchTerm, setSearchTerm] = useState("");
 
   // Get spots for the selected list
   const listSpots = useMemo(() => {
     if (!selectedListId) return [];
-    
-    // Handle Favorites list specially
-    if (selectedListId === FAVORITES_LIST_ID) {
-      return spots.filter((spot) => spot.isFavorite === true);
-    }
-    
+
     const list = lists.find((l) => l.id === selectedListId);
     if (!list) return [];
-    return spots.filter((spot) => list.spotIds.includes(spot.id));
+    const allSpots = [...spots, ...publicSpots];
+    return allSpots.filter((spot) => list.spotIds.includes(spot.id));
   }, [selectedListId, lists, spots]);
 
   // Filter lists based on search term
@@ -91,10 +92,10 @@ export default function Lists({
 
   if (selectedListId) {
     // Show spots in the selected list
-    const listName = selectedListId === FAVORITES_LIST_ID 
-      ? "Favorites" 
+    const listName = selectedListId === FAVORITES_LIST_ID
+      ? "Favorites"
       : lists.find((l) => l.id === selectedListId)?.name || "List";
-    
+
     return (
       <div className="flex flex-col h-full text-white">
         <div className="flex items-center gap-2 mb-4 flex-shrink-0">
@@ -118,13 +119,18 @@ export default function Lists({
               <button
                 onClick={onModifyClick}
                 disabled={isModifyDisabled}
-                className={`px-4 py-2 rounded font-semibold transition-colors ${
-                  isModifyDisabled
-                    ? "bg-gray-600 cursor-not-allowed text-gray-400"
-                    : "bg-blue-700 hover:bg-blue-600 cursor-pointer text-white"
-                }`}
+                className={`px-4 py-2 rounded font-semibold transition-colors ${isModifyDisabled
+                  ? "bg-gray-600 cursor-not-allowed text-gray-400"
+                  : "bg-blue-700 hover:bg-blue-600 cursor-pointer text-white"
+                  }`}
               >
                 MODIFY
+              </button>
+            )}
+            {onDeleteList && (
+              <button onClick={() => onDeleteList(selectedListId)}
+                className="px-4 py-2 rounded font-semibold transition-colors bg-red-700 hover:bg-red-600 text-white" >
+                DELETE LIST
               </button>
             )}
           </div>
@@ -150,14 +156,11 @@ export default function Lists({
               </li>
             ) : (
               filteredListSpots.map((spot) => (
-                <li
-                  key={spot.id}
-                  onClick={() => onSpotSelect(spot)}
-                  className={`flex items-center gap-4 p-2 rounded-lg cursor-pointer transition-all ${
-                    selectedSpotId === spot.id
-                      ? "bg-blue-700 ring-2 ring-blue-300"
-                      : "bg-gray-800 hover:bg-gray-700"
-                  }`}
+                <li key={spot.id} onClick={() => onSpotSelect(spot)}
+                  className={`flex items-center gap-4 p-2 rounded-lg cursor-pointer transition-all ${selectedSpotId === spot.id
+                    ? "bg-blue-700 ring-2 ring-blue-300"
+                    : "bg-gray-800 hover:bg-gray-700"
+                    }`}
                 >
                   {/* Photo Preview or Placeholder */}
                   {spot.photos && spot.photos.length > 0 ? (
@@ -227,35 +230,13 @@ export default function Lists({
       {/* Scrollable List of Lists */}
       <div className="flex-1 overflow-y-auto">
         <ul className="flex flex-col gap-3">
-          {/* Permanent Favorites List */}
-          {(!searchTerm || "favorites".includes(searchTerm.toLowerCase())) && (
-            <li
-              onClick={() => onListSelect({ id: FAVORITES_LIST_ID, name: "Favorites" } as SpotList)}
-              className="flex items-center gap-4 p-2 rounded-lg cursor-pointer transition-all bg-gray-800 hover:bg-gray-700"
-            >
-              <div className="flex items-center gap-2 flex-1">
-                <svg className="w-5 h-5 text-yellow-400 fill-current" viewBox="0 0 20 20">
-                  <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
-                </svg>
-                <div className="flex-1">
-                  <span className="font-semibold text-lg block">Favorites</span>
-                  <span className="text-gray-500 text-xs">
-                    {spots.filter((s) => s.isFavorite).length} spot{spots.filter((s) => s.isFavorite).length !== 1 ? "s" : ""}
-                  </span>
-                </div>
-              </div>
-            </li>
-          )}
-          
           {filteredLists.length === 0 ? (
             <li className="text-gray-400 text-center py-4">
               {searchTerm ? "No lists match your search" : "No lists yet. Create one to get started!"}
             </li>
           ) : (
             filteredLists.map((list) => (
-              <li
-                key={list.id}
-                onClick={() => onListSelect(list)}
+              < li key={list.id} onClick={() => onListSelect(list)}
                 className="flex items-center gap-4 p-2 rounded-lg cursor-pointer transition-all bg-gray-800 hover:bg-gray-700"
               >
                 <div className="flex-1">
@@ -264,7 +245,7 @@ export default function Lists({
                     <span className="text-gray-400 text-sm">{list.description}</span>
                   )}
                   <span className="text-gray-500 text-xs">
-                    {list.spotIds.length} spot{list.spotIds.length !== 1 ? "s" : ""}
+                    {list.spotIds?.length || list.spots?.length || 0} spot(s)
                   </span>
                 </div>
               </li>
@@ -272,7 +253,7 @@ export default function Lists({
           )}
         </ul>
       </div>
-    </div>
+    </div >
   );
 }
 

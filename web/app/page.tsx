@@ -12,31 +12,7 @@ import Footer from "@/components/Footer";
 import HelpButton from "@/components/HelpButton";
 import { getAllSpots, saveSpot } from "@/utils/spotStorage";
 import { getAllLists, saveList, generateListId } from "@/utils/listStorage";
-
-// --- EXAMPLE DATA ---
-const exampleSpotsData: Spot[] = [
-  {
-    id: "1",
-    name: "Omaha Spot 1",
-    latitude: 41.2565,
-    longitude: -95.9345,
-    description: "A cool spot by the park.",
-    tags: ["park", "public"],
-    createdAt: new Date().toString(),
-    updatedAt: new Date().toString(),
-  },
-  {
-    id: "2",
-    name: "Omaha Spot 2",
-    latitude: 41.258,
-    longitude: -95.94,
-    description: "Good view of downtown.",
-    tags: ["view", "downtown"],
-    createdAt: new Date().toString(),
-    updatedAt: new Date().toString(),
-  },
-];
-// --- END EXAMPLE DATA ---
+import { useAuth } from "@/lib/AuthContext";
 
 const USERNAME_KEY = "spotvault_username";
 
@@ -53,29 +29,37 @@ export default function Home() {
   const router = useRouter();
   const [spots, setSpots] = useState<Spot[]>([]);
   const [lists, setLists] = useState<SpotList[]>([]);
+  const [publicSpots, setPublicSpots] = useState<Spot[]>([]);
   const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
   const [selectedList, setSelectedList] = useState<SpotList | null>(null);
-  const [activeTab, setActiveTab] = useState<"spots" | "lists">("spots");
+  const [activeTab, setActiveTab] = useState<"spots" | "browse" | "lists">("spots");
   const [pendingSpot, setPendingSpot] = useState<{ lat: number; lng: number } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isListModalOpen, setIsListModalOpen] = useState(false);
   const [currentUsername] = useState<string>(() => getUsername());
-
+  const { userId, isLoggedIn } = useAuth();
   // Load spots and lists from localStorage on mount
   useEffect(() => {
-    const storedSpots = getAllSpots();
-    if (storedSpots.length > 0) {
-      setSpots(storedSpots);
-    } else {
-      // Use example data if no stored spots
-      setSpots(exampleSpotsData);
-      // Save example data to localStorage
-      exampleSpotsData.forEach(spot => saveSpot(spot));
+    const loadSpots = async () => {
+      if (!userId) return;//waiting for userId.
+      const spotsFromApi = await getAllSpots(userId);
+      setSpots(spotsFromApi);
+      const fetchedLists = await getAllLists(userId);
+      setLists(fetchedLists);
+    };
+    const loadPublicSpots = async () => {
+      const response = await fetch(`/api/spots/?browse=true&?limit=20, `, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error("Failed to fetch spot");
+      const publicSpots = await response.json();
+      setPublicSpots(publicSpots)
+    };
+    if (isLoggedIn && userId) {
+      loadSpots()
+      loadPublicSpots()
     }
-
-    const storedLists = getAllLists();
-    setLists(storedLists);
-  }, []);
+  }, [isLoggedIn, userId]);
 
   // Save spots to localStorage whenever they change
   useEffect(() => {
@@ -89,33 +73,54 @@ export default function Home() {
     lists.forEach(list => saveList(list));
   }, [lists]);
 
+  // was askng chatgpt for help with fixing the comments bug and it said remove this so we tryin somethin
   // Update selectedSpot when spots change
   useEffect(() => {
     if (selectedSpot) {
-      const updatedSpot = spots.find(s => s.id === selectedSpot.id);
+      let updatedSpot = spots.find(s => s.id === selectedSpot.id);
+      if (!updatedSpot) {
+        updatedSpot = publicSpots.find(s => s.id === selectedSpot.id);
+      }
       if (updatedSpot) {
         setSelectedSpot(updatedSpot);
       } else {
-        // Spot was deleted, clear selection
-        setSelectedSpot(null);
+        setSelectedSpot(null)
       }
     }
   }, [spots, selectedSpot?.id]);
 
 
-  const handleSpotListClick = (spot: Spot) => {
+  const handleSpotListClick = async (spot: Spot) => {
     setPendingSpot(null);
     if (selectedSpot?.id === spot.id) {
       setSelectedSpot(null);
     } else {
-      setSelectedSpot(spot);
-      // Don't automatically switch to lists tab - let user stay where they are
+      setSelectedSpot(spot); // for some snappiness, though it does cause a bit of a snapback?
+      //resyncs spot with db,
+      try {
+        const response = await fetch(`/api/spots/${spot.id}`, {
+          credentials: 'include',
+        });
+        if (!response.ok) throw new Error("Failed to fetch spot");
+        const fullSpot = await response.json();
+        // Update localStorage
+        const updatedSpots = spots.map(s => s.id === fullSpot.id ? fullSpot : s);
+        if (selectedSpot && selectedSpot.id == fullSpot.id) {
+          setSelectedSpot(fullSpot);//prevents snapback.
+        }
+        setSpots(updatedSpots);
+      } catch (error) {
+        console.error("Error fetching spot:", error);
+        //we already set the spot beforehand
+      }
     }
   };
+
 
   const handleMapClick = (lat: number, lng: number) => {
     setSelectedSpot(null);
     setPendingSpot({ lat, lng });
+
   };
 
   const handleAddClick = () => {
@@ -129,36 +134,71 @@ export default function Home() {
       router.push(`/spots/${selectedSpot.id}/edit`);
     }
   };
+  const handleCreateList = async (name: string, description?: string) => {
+    //call the api create list.
+    try {
+      const response = await fetch("/api/lists", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          description: description || undefined,
+        }),
+        credentials: 'include',
+      });
 
-  const handleCreateList = (name: string, description: string) => {
-    const newList: SpotList = {
-      id: generateListId(),
-      name,
-      description: description || undefined,
-      spotIds: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setLists([...lists, newList]);
-    setIsListModalOpen(false);
+      if (!response.ok) throw new Error("Failed to create list");
+      //get the list and apply to the layout via useEffect()
+      const newList = await response.json();
+      setLists([...lists, newList]);
+      setIsListModalOpen(false);
+    } catch (error) {
+      console.error("Error creating list:", error);
+    }
   };
 
-  const handleListSelect = (list: SpotList | null) => {
-    // Handle Favorites list (virtual list with id "__favorites__")
-    if (list && list.id === "__favorites__") {
-      setSelectedList(list);
-      setSelectedSpot(null);
-      setPendingSpot(null);
-      setActiveTab("lists");
-      return;
+  const handleDeleteList = async (listId: string) => {
+    if (confirm("Are you sure you want to delete this list?")) {
+      try {
+        const response = await fetch(`/api/lists/${listId}`, {
+          method: "DELETE",
+          credentials: 'include',
+        });
+
+        if (!response.ok) throw new Error("Failed to delete list");
+
+        // CHANGE: Remove from local state
+        setLists(lists.filter((l) => l.id !== listId));
+        setSelectedList(null);
+      } catch (error) {
+        console.error("Error deleting list:", error);
+      }
     }
-    
+  };
+
+
+  const handleListSelect = async (list: SpotList | null) => {
     setSelectedList(list);
     if (list) {
       setSelectedSpot(null);
       setPendingSpot(null);
-      // Only switch to lists tab if we're explicitly selecting a list
       setActiveTab("lists");
+      try {
+        const response = await fetch(`/api/lists/${list.id}?user_id=${userId}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          credentials: 'include',
+        });
+        if (!response.ok) throw new Error("Failed to fetch list");
+        //fill in the list.
+        const fullList = await response.json();
+        setLists(lists.map(l => l.id === list.id ? fullList : l));
+        if (selectedList && selectedList.id === fullList.id) {
+          setSelectedList(fullList) //prevent snapback.
+        }
+      } catch (error) {
+        console.error("error loading list details:", error)
+      }
     }
   };
 
@@ -170,81 +210,123 @@ export default function Home() {
     }
   };
 
-  const handleAddSpotToList = (listId: string) => {
-    if (!selectedSpot) return;
+  const handleRemoveSpotFromList = async () => {
+    if (!selectedSpot || !selectedList) return;
+    //call api.
+    const response = await fetch(`/api/lists/${selectedList.id}/items/${selectedSpot.id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        spot_id: selectedSpot.id,
+      }),
+      credentials: 'include',
+    });
+    if (!response.ok) throw new Error("Failed to remove spot from list");
 
-    // Update the spot's listId
-    const updatedSpot: Spot = {
-      ...selectedSpot,
-      listId,
+    //no need to track the response as long as there wasn't an error.
+    // Remove spot from local list
+    console.log(selectedList)
+    const updatedList: SpotList = {
+      ...selectedList,
+      spotIds: selectedList.spotIds.filter((id) => id !== selectedSpot.id),
+      spots: selectedList.spots?.filter((s) => s.id !== selectedSpot.id),
       updatedAt: new Date().toISOString(),
     };
+    //and "save"
+    console.log("hello")
+    console.log(updatedList)
+    setLists(lists.map((l) => (l.id === selectedList.id ? updatedList : l)));
+    handleListSelect(updatedList)
+  };
 
-    // Update the list's spotIds
-    const list = lists.find((l) => l.id === listId);
-    if (list && !list.spotIds.includes(selectedSpot.id)) {
-      const updatedList: SpotList = {
-        ...list,
-        spotIds: [...list.spotIds, selectedSpot.id],
-        updatedAt: new Date().toISOString(),
-      };
-      setLists(lists.map((l) => (l.id === listId ? updatedList : l)));
+  const onPublish = async () => {
+    if (!selectedSpot || selectedSpot.isPublic) {
+      return;
     }
+    await fetch(`/api/spots/${selectedSpot.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        is_public: true,
+      }),
+      credentials: 'include'
+    });
+  }
+  const handleaddspottolist = async (spotId: string, listId: string) => {
+    const spot = activeTab === "browse"
+      ? publicSpots.find(s => s.id === spotId)
+      : spots.find(s => s.id === spotId);
 
-    // Update spots
-    const updatedSpots = spots.map((spot) =>
-      spot.id === selectedSpot.id ? updatedSpot : spot
-    );
-    setSpots(updatedSpots);
-    setSelectedSpot(updatedSpot);
-  };
+    if (!spot || !listId) return;
 
-  const handleRemoveSpotFromList = () => {
-    if (!selectedSpot || !selectedSpot.listId) return;
-
-    const list = lists.find((l) => l.id === selectedSpot.listId);
-    if (list) {
-      // Remove spot from list
-      const updatedList: SpotList = {
-        ...list,
-        spotIds: list.spotIds.filter((id) => id !== selectedSpot.id),
-        updatedAt: new Date().toISOString(),
-      };
-      setLists(lists.map((l) => (l.id === list.id ? updatedList : l)));
+    try {
+      const response = await fetch(`/api/lists/${listId}/items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          spot_id: spotId,
+        }),
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to add spot to list");
+      }
+      const updatedLists = lists.map(list => {
+        if (list.id !== listId) return list;
+        return list.spotIds.includes(spotId) ? list : { ...list, spotIds: [...list.spotIds, spotId] };
+      });
+      setLists(updatedLists);
+    } catch (error) {
+      console.error("Error adding spot to list:", error);
     }
-
-    // Remove listId from spot
-    const updatedSpot: Spot = {
-      ...selectedSpot,
-      listId: undefined,
-      updatedAt: new Date().toISOString(),
-    };
-
-    const updatedSpots = spots.map((spot) =>
-      spot.id === selectedSpot.id ? updatedSpot : spot
-    );
-    setSpots(updatedSpots);
-    setSelectedSpot(updatedSpot);
   };
-
-  const handleAddPhoto = (photoDataUrl: string) => {
+  const handleAddPhoto = async (photoDataUrl: string) => {
     if (!selectedSpot) return;
+    try {
 
-    const updatedSpot: Spot = {
-      ...selectedSpot,
-      photos: [...(selectedSpot.photos || []), photoDataUrl],
-      updatedAt: new Date().toISOString(),
-    };
+      const response = await fetch(`/api/spots/${selectedSpot.id}/photo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          photoDataUrl,
+          photos: selectedSpot.photos || [],
+        }),
+        credentials: 'include',
+      });
 
-    const updatedSpots = spots.map((spot) =>
-      spot.id === selectedSpot.id ? updatedSpot : spot
-    );
+      if (!response.ok) throw new Error("Failed to add photo");
+      const { url } = await response.json()
+      const updatedSpot: Spot = {
+        ...selectedSpot,
+        photos: [...(selectedSpot.photos || []), url],
+      };
 
-    setSpots(updatedSpots);
-    setSelectedSpot(updatedSpot);
-  };
+      const updatedSpots = spots.map((spot) =>
+        spot.id === selectedSpot.id ? updatedSpot : spot
+      );
 
-  const handleDeletePhoto = (photoIndex: number) => {
+      setSpots(updatedSpots);
+      setSelectedSpot(updatedSpot);
+      await fetch(`/api/spots/${selectedSpot.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: updatedSpot.name,
+          description: updatedSpot.description,
+          photos: updatedSpot.photos,
+          tags: updatedSpot.tags,
+          is_public: updatedSpot.isPublic,
+        }),
+        credentials: 'include'
+      });
+    } catch (error) {
+      console.error("Error adding photo:", error);
+    }
+  }
+
+
+  const handleDeletePhoto = async (photoIndex: number) => {
     if (!selectedSpot || !selectedSpot.photos) return;
 
     const updatedPhotos = selectedSpot.photos.filter((_, index) => index !== photoIndex);
@@ -281,37 +363,46 @@ export default function Home() {
     }
   };
 
-  const handleAddSpotToCurrentList = () => {
-    if (!selectedList || !selectedSpot) return;
-    
-    // Check if spot is already in the list
-    if (selectedList.spotIds.includes(selectedSpot.id)) {
-      return; // Already in list
+
+  const handleAddSpotToCurrentList = async () => {
+    if (!selectedSpot || !selectedList) return;
+
+    try {
+
+      const updatedList: SpotList = {
+        ...selectedList,
+        spots: [...(selectedList.spots ? selectedList.spots : []), selectedSpot],
+        spotIds: [...selectedList.spotIds, selectedSpot.id],
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Update global lists array (triggers localStorage sync)
+      setLists(lists.map(l => l.id === updatedList.id ? updatedList : l));
+
+      // Update selected list
+      if (updatedList.id == selectedList.id) {
+        setSelectedList(updatedList);
+      }
+      const response = await fetch(`/api/lists/${selectedList.id}/items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          spot_id: selectedSpot.id,
+        }),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to add spot to list");
+      }
+
+    } catch (error) {
+      console.error("Error adding spot to list:", error);
     }
-
-    // Add spot to list
-    const updatedList: SpotList = {
-      ...selectedList,
-      spotIds: [...selectedList.spotIds, selectedSpot.id],
-      updatedAt: new Date().toISOString(),
-    };
-
-    // Update spot's listId
-    const updatedSpot: Spot = {
-      ...selectedSpot,
-      listId: selectedList.id,
-      updatedAt: new Date().toISOString(),
-    };
-
-    setLists(lists.map((l) => (l.id === selectedList.id ? updatedList : l)));
-    const updatedSpots = spots.map((spot) =>
-      spot.id === selectedSpot.id ? updatedSpot : spot
-    );
-    setSpots(updatedSpots);
-    setSelectedSpot(updatedSpot);
   };
 
-  const handleSaveSpot = (name: string, tags: string, description: string) => {
+  const handleSaveSpot = async (name: string, tags: string, description: string) => {
     if (!pendingSpot) return;
 
     const processedTags = tags
@@ -319,76 +410,146 @@ export default function Home() {
       .map((tag) => tag.trim())
       .filter((tag) => tag.length > 0);
 
-    const newSpot: Spot = {
-      id: new Date().toISOString(),
-      name: name,
-      latitude: pendingSpot.lat,
-      longitude: pendingSpot.lng,
-      tags: processedTags,
-      description: description.trim() || undefined,
-      comments: [],
-      photos: [],
-      createdAt: new Date().toString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    setSpots([...spots, newSpot]);
-    setIsModalOpen(false);
-    setPendingSpot(null);
-    setSelectedSpot(newSpot);
-  };
-
-  const handleDeleteSpot = () => {
-    if (!selectedSpot) return;
-    if (confirm(`Are you sure you want to delete "${selectedSpot.name}"?`)) {
-      setSpots(spots.filter(spot => spot.id !== selectedSpot.id));
-      setSelectedSpot(null);
+    try {
+      const response = await fetch("/api/spots", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name,
+          latitude: pendingSpot.lat,
+          longitude: pendingSpot.lng,
+          tags: processedTags,
+          description: description.trim() || "",
+          comments: [],
+          photos: [],
+        }),
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error("Failed to save spot");
+      const savedSpot = await response.json()
+      if (savedSpot) {
+        setSpots([...spots, savedSpot]);
+        setIsModalOpen(false);
+        setPendingSpot(null);
+        setSelectedSpot(savedSpot);
+      }
+    } catch (error) {
+      console.error("Error saving spot:", error);
     }
   };
 
-  const handleAddComment = (commentText: string) => {
+  const handleDeleteSpot = async () => {
     if (!selectedSpot) return;
+    if (confirm(`Are you sure you want to delete "${selectedSpot.name}" ? `)) {
+      try {//delete via API
+        const response = await fetch(`/api/spots/${selectedSpot.id}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
 
-    const newComment: Comment = {
-      id: `comment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      text: commentText,
-      username: currentUsername,
-      createdAt: new Date().toISOString(),
+        if (!response.ok) throw new Error("Failed to delete spot");
+        setSpots(spots.filter(spot => spot.id !== selectedSpot.id));
+        setSelectedSpot(null);
+      } catch (error) {
+        console.error("Error deleting spot:", error);
+      }
     };
+  }
 
-    const updatedSpot: Spot = {
-      ...selectedSpot,
-      comments: [...(selectedSpot.comments || []), newComment],
-      updatedAt: new Date().toISOString(),
-    };
+  const handleUpdateSpot = async (name: string, description: string, tags: string[]) => {
+    if (!selectedSpot) return;
+    try {
+      const response = await fetch(`/api/spots/${selectedSpot?.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          description,
+          tags,
+        }),
+        credentials: 'include',
+      });
 
-    const updatedSpots = spots.map(spot =>
-      spot.id === selectedSpot.id ? updatedSpot : spot
-    );
+      if (!response.ok) throw new Error("Failed to edit spot");
+      const updatedSpot = await response.json();
+      const updatedSpots = spots.map((spot) => spot.id === selectedSpot.id ? updatedSpot : spot);
+      setSpots(updatedSpots);
+      setSelectedSpot(updatedSpot);
+    } catch (err) {
+      console.log(err)
+    }
 
-    setSpots(updatedSpots);
-    setSelectedSpot(updatedSpot);
+  }
+  const handleAddComment = async (commentText: string) => {
+    if (!selectedSpot) return;
+    try {
+      const response = await fetch(`/api/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creator_id: selectedSpot.creator_id,
+          spot_id: selectedSpot.id,
+          text: commentText,
+          username: currentUsername,
+          createdAt: new Date().toISOString(),
+        }),
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error("Failed to add comment");
+
+      const newComment = await response.json();
+
+      const updatedSpot: Spot = {
+        ...selectedSpot,
+        comments: [...(selectedSpot.comments || []), newComment],
+        updatedAt: new Date().toISOString(),
+      };
+      if (selectedSpot.creator_id != userId) {
+        const updatedSpots = publicSpots.map(spot =>
+          spot.id === selectedSpot.id ? updatedSpot : spot
+        );
+      } else {
+        const updatedSpots = spots.map(spot =>
+          spot.id === selectedSpot.id ? updatedSpot : spot
+        );
+        setSpots(updatedSpots);
+      }
+      setSelectedSpot(updatedSpot);
+    } catch (error) {
+      console.error("Error adding comment:", error);
+    }
   };
 
-  const handleDeleteComment = (commentId: string) => {
+  const handleDeleteComment = async (commentId: string) => {
     if (!selectedSpot) return;
+    try {
+      //api delete comment
+      const response = await fetch(`/api/comments/${commentId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error("Failed to delete comment");
 
-    const updatedComments = (selectedSpot.comments || []).filter(
-      comment => comment.id !== commentId
-    );
 
-    const updatedSpot: Spot = {
-      ...selectedSpot,
-      comments: updatedComments,
-      updatedAt: new Date().toISOString(),
-    };
+      const updatedComments = (selectedSpot.comments || []).filter(
+        comment => comment.id !== commentId
+      );
 
-    const updatedSpots = spots.map(spot =>
-      spot.id === selectedSpot.id ? updatedSpot : spot
-    );
+      const updatedSpot: Spot = {
+        ...selectedSpot,
+        comments: updatedComments,
+        updatedAt: new Date().toISOString(),
+      };
 
-    setSpots(updatedSpots);
-    setSelectedSpot(updatedSpot);
+      const updatedSpots = spots.map(spot =>
+        spot.id === selectedSpot.id ? updatedSpot : spot
+      );
+      setSpots(updatedSpots);       //and this deletes stuff!
+      setSelectedSpot(updatedSpot);
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+    }
   };
 
   useEffect(() => {
@@ -442,6 +603,8 @@ export default function Home() {
       <div className="flex gap-2 overflow-hidden h-[65vh]">
         <main className="flex-[3] rounded-lg bg-black p-4">
           <Map
+            isBrowse={activeTab == "browse"}
+            publicSpots={publicSpots}
             spots={spots}
             selectedSpotId={selectedSpot?.id || null}
             initialLat={currentLat}
@@ -455,6 +618,7 @@ export default function Home() {
 
         <Sidebar
           spots={spots}
+          publicSpots={publicSpots}
           lists={lists}
           selectedSpotId={selectedSpot?.id || null}
           selectedListId={selectedList?.id || null}
@@ -463,37 +627,42 @@ export default function Home() {
           isAddDisabled={!pendingSpot}
           isModifyDisabled={!selectedSpot}
           onAddClick={handleAddClick}
+          onSaveToList={handleaddspottolist}
           onModifyClick={handleModifyClick}
           onCreateList={() => setIsListModalOpen(true)}
           onAddSpotToList={selectedList ? handleAddSpotToCurrentList : undefined}
+          onDeleteList={handleDeleteList}
           onToggleFavorite={handleToggleFavorite}
-          onModifyClick={handleModifyClick}
-          isModifyDisabled={!selectedSpot}
           activeTab={activeTab || "spots"}
+          onUpdateSpot={handleUpdateSpot}
           onTabChange={(tab) => {
             setActiveTab(tab);
-            if (tab === "spots") {
-              // Clear list selection when switching to spots tab
+            if (tab === "spots" || tab === "browse") {
+              // Clear list selection when switching to spots or browse tab
               setSelectedList(null);
             }
           }}
         />
       </div>
-      
+
       <Footer
         selectedSpot={selectedSpot}
         pendingSpot={pendingSpot}
         currentUsername={currentUsername}
         lists={lists}
+        activeTab={activeTab}
+        onPublish={onPublish}
+        selectedList={selectedList}
         onDeleteSpot={handleDeleteSpot}
         onAddComment={handleAddComment}
         onDeleteComment={handleDeleteComment}
         onListClick={handleListClick}
-        onAddSpotToList={handleAddSpotToList}
         onRemoveSpotFromList={handleRemoveSpotFromList}
         onAddPhoto={handleAddPhoto}
         onDeletePhoto={handleDeletePhoto}
+        onUpdateSpot={handleUpdateSpot}
       />
     </div>
   );
 }
+

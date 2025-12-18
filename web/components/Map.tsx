@@ -10,6 +10,8 @@ interface MapProps {
   initialLng?: number;
   initialZoom?: number;
   spots?: Spot[];
+  publicSpots?: Spot[];
+  isBrowse: boolean;
   selectedSpotId?: string | null;
   pendingSpot?: { lat: number; lng: number } | null;
   onMapClick?: (lat: number, lng: number) => void;
@@ -23,6 +25,8 @@ export default function Map({
   spots = [],
   selectedSpotId = null,
   pendingSpot = null,
+  isBrowse = false,
+  publicSpots = [],
   onMapClick,
   onMarkerClick,
 }: MapProps) {
@@ -37,12 +41,12 @@ export default function Map({
   const pendingMarker = useRef<maplibregl.Marker | null>(null);
   const onMapClickRef = useRef(onMapClick);
   const onMarkerClickRef = useRef(onMarkerClick);
-  
+
   // Keep refs updated
   useEffect(() => {
     onMapClickRef.current = onMapClick;
   }, [onMapClick]);
-  
+
   useEffect(() => {
     onMarkerClickRef.current = onMarkerClick;
   }, [onMarkerClick]);
@@ -63,7 +67,7 @@ export default function Map({
 
       map.current = new maplibregl.Map({
         container: mapContainer.current,
-          style: {
+        style: {
           version: 8,
           sources: {
             "maptiler-raster": {
@@ -113,11 +117,11 @@ export default function Map({
       // Check if clicking directly on a marker element
       const target = e.originalEvent.target as HTMLElement;
       const clickedMarker = target.closest('.maplibregl-marker');
-      
+
       if (clickedMarker) {
         return; // Don't create new spot when clicking existing markers
       }
-      
+
       const { lat, lng } = e.lngLat;
       if (onMapClickRef.current) {
         onMapClickRef.current(lat, lng);
@@ -149,8 +153,8 @@ export default function Map({
 
     markers.current.forEach((marker) => marker.remove());
     markers.current.clear();
-
-    spots.forEach((spot) => {
+    const currentspots = (isBrowse || false) ? publicSpots : spots
+    currentspots.forEach((spot) => {
       if (spot.latitude && spot.longitude) {
         const isSelected = spot.id === selectedSpotId;
         const color = isSelected ? "#2ecc71" : "#3498db"; // Green when selected, blue otherwise
@@ -158,7 +162,7 @@ export default function Map({
         const newMarker = new maplibregl.Marker({ color })
           .setLngLat([spot.longitude, spot.latitude])
           .addTo(map.current!);
-        
+
         // Add click handler to marker
         const markerElement = newMarker.getElement();
         markerElement.style.cursor = 'pointer';
@@ -174,7 +178,7 @@ export default function Map({
       }
     });
   }, [spots, selectedSpotId, isLoaded]);
-  
+
   useEffect(() => {
     if (!map.current || !isLoaded) return;
 

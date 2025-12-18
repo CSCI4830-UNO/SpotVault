@@ -8,6 +8,7 @@ import Lists from "@/components/Lists";
 
 interface SidebarProps {
   spots: Spot[];
+  publicSpots: Spot[];
   lists: SpotList[];
   selectedSpotId: string | null;
   selectedListId: string | null;
@@ -17,11 +18,14 @@ interface SidebarProps {
   onListSelect: (list: SpotList | null) => void;
   onAddClick: () => void;
   onModifyClick: () => void;
+  onUpdateSpot(name: string, description: string, tags: string[]): void;
   onCreateList: () => void;
   onAddSpotToList?: () => void;
   onToggleFavorite?: (spotId: string) => void;
-  activeTab?: "spots" | "lists";
-  onTabChange?: (tab: "spots" | "lists") => void;
+  activeTab?: "spots" | "lists" | "browse";
+  onTabChange?: (tab: "spots" | "lists" | "browse") => void;
+  onDeleteList: (listId: string) => void;
+  onSaveToList: (spotId: string, listId: string) => void;
 }
 
 export default function Sidebar({
@@ -32,6 +36,8 @@ export default function Sidebar({
   isAddDisabled,
   isModifyDisabled,
   onSpotSelect,
+  onSaveToList,
+  publicSpots,
   onListSelect,
   onAddClick,
   onModifyClick,
@@ -40,20 +46,22 @@ export default function Sidebar({
   onToggleFavorite,
   activeTab: externalActiveTab,
   onTabChange,
+  onDeleteList,
+  onUpdateSpot,
 }: SidebarProps) {
-  const [internalActiveTab, setInternalActiveTab] = useState<"spots" | "lists">("spots");
-  
+  const [internalActiveTab, setInternalActiveTab] = useState<"spots" | "lists" | "browse">("spots");
+
   // Always use external tab if provided, otherwise use internal
   const activeTab = externalActiveTab !== undefined ? externalActiveTab : internalActiveTab;
-  
+
   // Sync internal tab with external tab when it changes
   useEffect(() => {
     if (externalActiveTab !== undefined) {
       setInternalActiveTab(externalActiveTab);
     }
   }, [externalActiveTab]);
-  
-  const setActiveTab = (tab: "spots" | "lists") => {
+
+  const setActiveTab = (tab: "spots" | "lists" | "browse") => {
     if (onTabChange) {
       onTabChange(tab);
     } else {
@@ -70,11 +78,10 @@ export default function Sidebar({
             setActiveTab("spots");
             onListSelect(null);
           }}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === "spots"
-              ? "text-blue-400 border-b-2 border-blue-400"
-              : "text-gray-400 hover:text-white"
-          }`}
+          className={`px-4 py-2 font-medium transition-colors ${activeTab === "spots"
+            ? "text-blue-400 border-b-2 border-blue-400"
+            : "text-gray-400 hover:text-white"
+            }`}
         >
           Spots
         </button>
@@ -83,13 +90,24 @@ export default function Sidebar({
             setActiveTab("lists");
             onListSelect(null);
           }}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === "lists"
-              ? "text-blue-400 border-b-2 border-blue-400"
-              : "text-gray-400 hover:text-white"
-          }`}
+          className={`px-4 py-2 font-medium transition-colors ${activeTab === "lists"
+            ? "text-blue-400 border-b-2 border-blue-400"
+            : "text-gray-400 hover:text-white"
+            }`}
         >
           Lists
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab("browse");
+            onListSelect(null);
+          }}
+          className={`px-4 py-2 font-medium transition-colors ${activeTab === "browse"
+            ? "text-blue-400 border-b-2 border-blue-400"
+            : "text-gray-400 hover:text-white"
+            }`}
+        >
+          Browse
         </button>
       </div>
 
@@ -99,8 +117,24 @@ export default function Sidebar({
           spots={spots}
           selectedSpotId={selectedSpotId}
           onSpotSelect={onSpotSelect}
+          lists={lists}
           isAddDisabled={isAddDisabled}
           isModifyDisabled={isModifyDisabled}
+          onAddClick={onAddClick}
+          onSaveToList={onSaveToList}
+          onModifyClick={onModifyClick}
+          onToggleFavorite={onToggleFavorite}
+        />
+      ) : activeTab === "browse" ? (
+        <Spots
+          spots={publicSpots}
+          selectedSpotId={selectedSpotId}
+          onSpotSelect={onSpotSelect}
+          isAddDisabled={true}
+          isModifyDisabled={true}
+          isBrowse={true}
+          lists={lists}
+          onSaveToList={onSaveToList}
           onAddClick={onAddClick}
           onModifyClick={onModifyClick}
           onToggleFavorite={onToggleFavorite}
@@ -108,6 +142,7 @@ export default function Sidebar({
       ) : (
         <Lists
           lists={lists}
+          publicSpots={publicSpots}
           spots={spots}
           selectedListId={selectedListId}
           onListSelect={onListSelect}
@@ -118,6 +153,7 @@ export default function Sidebar({
           onModifyClick={onModifyClick}
           isModifyDisabled={isModifyDisabled}
           onToggleFavorite={onToggleFavorite}
+          onDeleteList={onDeleteList}
         />
       )}
     </aside>

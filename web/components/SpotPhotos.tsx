@@ -65,7 +65,7 @@ export default function SpotPhotos({
           {isUploading ? "Uploading..." : "+ Add Photo"}
         </label>
       </div>
-      
+
       {photos.length === 0 ? (
         <p className="text-gray-400 text-xs">No photos yet</p>
       ) : (
@@ -74,6 +74,7 @@ export default function SpotPhotos({
             <div key={index} className="relative flex-shrink-0 group">
               <img
                 src={photo}
+                crossOrigin="anonymous"
                 alt={`Spot photo ${index + 1}`}
                 className="w-20 h-20 object-cover rounded border border-gray-700"
               />

@@ -1,5 +1,6 @@
 import { getSupabaseClient } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server'
+import { userInfo } from 'os';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,19 +21,50 @@ export async function POST(request: NextRequest) {
     if (loginError) {
       return NextResponse.json({ error: loginError }, { status: 401 })
     }
-    //create a user record to collect user info.
-    if (logindata.user) {
-      const { error: userError } = await supabase.from('users').insert({ id: logindata.user.id, username });
-      if (userError) {
-        return NextResponse.json({ error: userError.message }, { status: 500 });
-      }
+    if (!logindata.user) {
+      return NextResponse.json({ error: 'User creation failed' }, { status: 500 })
     }
-    return NextResponse.json({ data }, { status: 201 });
+    //create a user record to collect user info.
+    const { error: userError } = await supabase.from('users').insert({ id: logindata.user.id, username });
+    if (userError) {
+      return NextResponse.json({ error: userError.message }, { status: 500 });
+    }
+    const { data: listData, error: listError } = await supabase
+      .from('lists')
+      .insert({
+        user_id: logindata.user.id,
+        name: 'Favorites',
+        description: 'For your favorite spots!',
+      })
+      .select('id')
+      .single()
+
+    if (!listData || listError) {
+      throw listError
+    }
+
+    // Attach favorites list to user
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ favorites_list_id: listData.id })
+      .eq('id', logindata.user.id)
+
+    if (updateError) {
+      throw updateError
+    }
+
+    return NextResponse.json({
+      user: {
+        id: logindata.user.id,
+        username: username,
+        favoriteListId: listData.id,
+      }
+    }, { status: 200 });
   } catch (err) {
-    console.log('error signing up: ', err);
+    console.error('error signing up:', err)
     return NextResponse.json(
       { error: 'Failed to sign up due to internal server error.' },
       { status: 500 }
-    );
+    )
   }
 }

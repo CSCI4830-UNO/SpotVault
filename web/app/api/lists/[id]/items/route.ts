@@ -5,9 +5,9 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const supabase = await getSupabaseClient()
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-    if (sessionError || !session) {
+    if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     //next.js is telling me to await, but the linter says its pointless. ¯\_(ツ)_/¯
     const body = await request.json()
 
-    if (!body.spot_id) {  // Changed from user_spot_id
+    if (!body.spot_id) {
       return NextResponse.json(
         { error: 'spot_id required' },
         { status: 400 }
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({ error: 'List not found' }, { status: 404 })
     }
 
-    if (list.user_id !== session.user.id) {
+    if (list.user_id !== user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       .from('list_items')
       .insert({
         list_id: listId,
-        spot_id: body.spot_id  // Changed from user_spot_id
+        spot_id: body.spot_id
       })
       .select()
       .single()
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       throw error
     }
 
-    return NextResponse.json(data, { status: 201 })
+    return NextResponse.json({ message: "successfully added item to list!" }, { status: 201 })
   } catch (err) {
     console.error('Error adding item to list:', err)
     return NextResponse.json(
