@@ -37,7 +37,7 @@ export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isListModalOpen, setIsListModalOpen] = useState(false);
   const [currentUsername] = useState<string>(() => getUsername());
-  const { userId, isLoggedIn } = useAuth();
+  const { userId, isLoggedIn, favoriteListId } = useAuth();
   // Load spots and lists from localStorage on mount
   useEffect(() => {
     const loadSpots = async () => {
@@ -103,12 +103,15 @@ export default function Home() {
         });
         if (!response.ok) throw new Error("Failed to fetch spot");
         const fullSpot = await response.json();
+        console.log(fullSpot)
         // Update localStorage
         const updatedSpots = spots.map(s => s.id === fullSpot.id ? fullSpot : s);
+        const updatedPublicSpots = publicSpots.map(s => s.id === fullSpot.id ? fullSpot : s);
         if (selectedSpot && selectedSpot.id == fullSpot.id) {
           setSelectedSpot(fullSpot);//prevents snapback.
         }
         setSpots(updatedSpots);
+        setPublicSpots(updatedPublicSpots)
       } catch (error) {
         console.error("Error fetching spot:", error);
         //we already set the spot beforehand
@@ -158,6 +161,10 @@ export default function Home() {
   };
 
   const handleDeleteList = async (listId: string) => {
+    if (listId == favoriteListId) {
+      alert("Sorry, you can't delete the favorites list.")
+      return;
+    }
     if (confirm("Are you sure you want to delete this list?")) {
       try {
         const response = await fetch(`/api/lists/${listId}`, {

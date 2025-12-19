@@ -47,7 +47,7 @@ export default function Footer({
   return (
     <footer className="h-[50vh] flex-shrink-0 rounded-lg bg-black p-4">
       {selectedSpot ? (
-        <div className="border rounded-lg p-4 h-full flex flex-col">
+        <div className=" p-4 h-full flex flex-col">
           <div className="flex gap-4 h-full">
             {/*left*/}
             <div className="flex flex-col gap-4 w-1/4 flex-shrink-0">
@@ -127,7 +127,7 @@ export default function Footer({
             {/* middle - Comments Section */}
             <div className="flex-1 min-h-0">
               <Comments
-                comments={selectedSpot.comments || []}
+                comments={selectedSpot.comments}
                 currentUsername={currentUsername}
                 onAddComment={onAddComment}
                 onDeleteComment={onDeleteComment}

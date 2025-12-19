@@ -126,8 +126,11 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
     const { id } = await params
+    const { data: userData, error: favoritesError } = await supabase
+      .from('users')
+      .select('favorites_list_id')
+      .eq('id', user.id)
 
     // Delete list (cascade deletes list_items via ON DELETE CASCADE)
     const { error } = await supabase
@@ -137,7 +140,6 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       .eq('id', id)
 
     if (error) {
-
       return NextResponse.json({ error: 'List not found.' }, { status: 401 })
     }
     return NextResponse.json({ message: 'List deleted' })

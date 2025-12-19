@@ -57,6 +57,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         }
       }
     }
+
     return NextResponse.json(transformSpotResponse(spot, userSpot, comments))
   } catch (err) {
     console.error('Error fetching spot:', err);

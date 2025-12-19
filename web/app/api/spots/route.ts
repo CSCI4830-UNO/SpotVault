@@ -21,41 +21,45 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(request.nextUrl.searchParams.get('limit') || '100')    //pagination limit
     const offset = parseInt(request.nextUrl.searchParams.get('offset') || '0')    //pagination limit
 
+    //join all the spots visble to the user with all the user_spots that arevisible to the user.
     let query = supabase
       .from('spots')
-      .select('*')
+      .select(`
+        spot_id,
+        name,
+        latitude,
+        longitude,
+        tags,
+        is_public,
+        creator_id,
+        created_at,
+        user_spots(id, pictures, notes, is_public, user_id)
+      `)
       .or(`is_public.eq.true,creator_id.eq.${user.id || 'null'}`)
 
-    // Browse: all public spots
+    // only sees public spots
     if (browse) {
       query = query.eq('is_public', true)
     }
 
-    // Filter by creator
+    // Filter by creator 
     if (userId) {
       query = query.eq('creator_id', userId)
     }
 
+    //call the query
     const { data: spots, error } = await query
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
     if (error) throw error
 
-    // Aggregate with user_spots (most recent accessible one, though there should only be one)
-    const aggregated = await Promise.all(
-      spots.map(async (spot) => {
-        const { data: userSpots } = await supabase
-          .from('user_spots')
-          .select('*')
-          .eq('spot_id', spot.spot_id)
-          .or(`is_public.eq.true,user_id.eq.${user.id || 'null'}`)
-          .order('created_at', { ascending: false })
-          .limit(1)
-
-        return transformSpotResponse(spot, userSpots?.[0] || null)
-      })
-    )
+    // map each spot to a single user_spot for the current applicatio
+    const aggregated = spots.map(spot => {
+      const linkedUserSpot = spot.user_spots?.find(userSpot =>
+        userSpot.user_id === (userId ? userId : user.id) && (userSpot.is_public || userSpot.user_id === (userId ? userId : user.id))) || null
+      return transformSpotResponse(spot, linkedUserSpot)
+    })
 
     return NextResponse.json(aggregated)
   } catch (err) {

@@ -39,6 +39,7 @@ export default function Comments({
       minute: "2-digit",
     });
   };
+  console.log(comments)
 
   return (
     <div className="flex flex-col h-full">
